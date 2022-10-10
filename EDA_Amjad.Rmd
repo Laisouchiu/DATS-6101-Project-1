@@ -1,0 +1,116 @@
+---
+title: "EDA Amjad"
+output: html_document
+date: "2022-10-06"
+---
+#Data loading and structure
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(RColorBrewer)
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+bike <- read.csv("bo.csv")
+
+str(bike)
+```
+
+
+```{r}
+head(bike, n=4)
+```
+
+#Data preparing 
+```{r}
+# change rideable_type/ member_casual to factor 
+#there three numbers under the factor rideable_type needs to look into!
+bike$rideable_type <- factor(bike$rideable_type)
+bike$member_casual <- factor(bike$member_casual)
+
+# split started_at/ ended_at to date column and time column
+# change start_date/end_date to date type
+bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M:%S") 
+bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M:%S") 
+bike$start_date <- as.Date(bike$started_at)
+bike$end_date <- as.Date(bike$ended_at)
+
+# change time column to time column
+
+# Check the structure again
+str(bike)
+```
+
+#Data analysis & visualazation
+**How many users of each membership type we have?**
+```{r}
+bike %>% count(member_casual)
+ggplot(bike, aes(member_casual, fill = member_casual))+
+  geom_bar()+
+  scale_fill_brewer(palette = "Set2")+
+  guides(fill="none")+
+  labs(title = "User membersip types", x= "types of memebership")+
+  theme_classic()
+```
+There are more causal (24-hour pass or 3-day pass user) than annual members users by around 1000 difference in August 2022. There are two types of the Causal member which are Single trip cost 2.25 per 30m and 8 for unlimited 30m ride in a day, annual membership on the other hand cost 85$ a year. 
+
+**What is the most frequent bike type used?**
+```{r}
+ggplot(bike, aes(rideable_type, fill = rideable_type))+
+  geom_bar()+
+  scale_fill_brewer(palette = "Set2")+
+  guides(fill="none")+
+  labs(title = "Types of used biks", x = "")+
+  theme_classic()
+  
+```
+There are few users of docked bike type comparing to the others. Docked bike is a bicycles that can be borrowed or rented from an automated station or "docking stations". It is interesting why would people prefer other types above this type!
+**casual members prefer watch type? VS members**
+```{r}
+# grouping types of users and counting their used bike type without counting docked_bike because it is only 3 users
+members_preferance <- bike %>% group_by(member_casual, rideable_type)%>%
+  filter(rideable_type != "docked_bike")%>%
+  summarise(used = n())
+print(members_preferance)
+
+ggplot(members_preferance, aes(x= member_casual,y = used , fill = rideable_type))+
+  geom_bar(position='dodge', stat='identity')+
+  labs(title = "Most used bike type to user", x= "type of user", y="")+
+  theme_classic()
+```
+While there is no huge difference between annual members in choosing classic or electric bikes, Casual members choose to use electric bikes over the classic by around 680 time. 
+
+**Which day of the week the serves is used more?**
+```{r}
+#extrat only the day and convert it to day of the week
+bike$days <- format(bike$start_date, format = "%a")
+
+ggplot(bike, aes(days, fill = days))+
+  geom_bar()+
+  scale_fill_brewer(palette = "Set2")+
+  guides(fill="none")+
+  labs(title = "Number of users in the days of the week")+
+  theme_classic()
+```
+Saturdays and Wednesdays have the most number of users but overall there is no big difference between the days of the week in the count of users. 
+**When is the highest-lowest time of use of the day?**
+```{r}
+
+```
+**Is there a correlation between time and day of usage?**
+```{r}
+
+```
+**What is the average trip distance?**
+```{r}
+
+```
+**where are the most used stations**
+#heat map
+```{r}
+
+```
