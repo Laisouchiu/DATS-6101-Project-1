@@ -10,6 +10,7 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(RColorBrewer)
+library(lubridate)
 
 ```
 
@@ -82,31 +83,53 @@ ggplot(members_preferance, aes(x= member_casual,y = used , fill = rideable_type)
   labs(title = "Most used bike type to user", x= "type of user", y="")+
   theme_classic()
 ```
-While there is no huge difference between annual members in choosing classic or electric bikes, Casual members choose to use electric bikes over the classic by around 680 time. 
+While there is no huge difference between annual members in choosing classic or electric bikes, Casual members choose to use electric bikes over the classic by around 680 user. 
+
+**contingency table between customer type and bike type**
+```{r}
+#the probability of each user to pick this type of bike
+round(prop.table(table(bike$member_casual, bike$rideable_type))*100, 2)
+```
+While there is almost even number of the annual member to choose electric or classic bike,casual users are more likely to choose electric bike. 
 
 **Which day of the week the serves is used more?**
 ```{r}
 #extrat only the day and convert it to day of the week
 bike$days <- format(bike$start_date, format = "%a")
+#convert it to a factor and organize the days order
+bike$days <- factor(bike$days, levels = c("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri" ))
 
 ggplot(bike, aes(days, fill = days))+
   geom_bar()+
   scale_fill_brewer(palette = "Set2")+
   guides(fill="none")+
-  labs(title = "Number of users in the days of the week")+
+  labs(title = "Number of users in the days of the week", x="Days of the week")+
   theme_classic()
 ```
 Saturdays and Wednesdays have the most number of users but overall there is no big difference between the days of the week in the count of users. 
 **When is the highest-lowest time of use of the day?**
 ```{r}
+#get only the hour from the time
+bike$hour <- NA 
+bike$hour <- hour(bike$started_at)
 
+#ask about the statement of p-value too.
+ggplot(bike, aes(hour))+
+  geom_line(stat = "bin", bins = 30)
+summary(bike$hour)
 ```
 **Is there a correlation between time and day of usage?**
 ```{r}
-
+aov(hour ~ days, data = bike)
 ```
 **What is the average trip distance?**
 ```{r}
+
+```
+**probopality of user membership and distance time**
+```{r}
+#y1 = contenuse, y2 = binary
+t.test(dis_time ~ member_casual, var.equal = FALSE)
 
 ```
 **where are the most used stations**
