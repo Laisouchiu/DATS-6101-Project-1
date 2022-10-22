@@ -52,7 +52,7 @@ str(bike)
 bike %>% count(member_casual)
 ggplot(bike, aes(member_casual, fill = member_casual))+
   geom_bar()+
-  scale_fill_brewer(palette = "Set2")+
+  scale_fill_brewer(palette = "BuPu")+
   guides(fill="none")+
   labs(title = "User membersip types", x= "types of memebership")+
   theme_classic()
@@ -63,7 +63,7 @@ There are more causal (24-hour pass or 3-day pass user) than annual members user
 ```{r}
 ggplot(bike, aes(rideable_type, fill = rideable_type))+
   geom_bar()+
-  scale_fill_brewer(palette = "Set2")+
+  scale_fill_brewer(palette = "BuPu")+
   guides(fill="none")+
   labs(title = "Types of used biks", x = "")+
   theme_classic()
@@ -77,9 +77,9 @@ members_preferance <- bike %>% group_by(member_casual, rideable_type)%>%
   filter(rideable_type != "docked_bike")%>%
   summarise(used = n())
 print(members_preferance)
-
 ggplot(members_preferance, aes(x= member_casual,y = used , fill = rideable_type))+
   geom_bar(position='dodge', stat='identity')+
+  scale_fill_brewer(palette = "BuPu")+
   labs(title = "Most used bike type to user", x= "type of user", y="")+
   theme_classic()
 ```
@@ -88,7 +88,7 @@ While there is no huge difference between annual members in choosing classic or 
 **contingency table between customer type and bike type**
 ```{r}
 #the probability of each user to pick this type of bike
-round(prop.table(table(bike$member_casual, bike$rideable_type))*100, 2)
+round(table(bike$member_casual, bike$rideable_type), 2)
 ```
 While there is almost even number of the annual member to choose electric or classic bike,casual users are more likely to choose electric bike. 
 
@@ -99,28 +99,59 @@ bike$days <- format(bike$start_date, format = "%a")
 #convert it to a factor and organize the days order
 bike$days <- factor(bike$days, levels = c("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri" ))
 
+
 ggplot(bike, aes(days, fill = days))+
   geom_bar()+
-  scale_fill_brewer(palette = "Set2")+
+  scale_fill_brewer(palette = "BuPu")+
   guides(fill="none")+
   labs(title = "Number of users in the days of the week", x="Days of the week")+
   theme_classic()
 ```
 Saturdays and Wednesdays have the most number of users but overall there is no big difference between the days of the week in the count of users. 
+
 **When is the highest-lowest time of use of the day?**
 ```{r}
 #get only the hour from the time
 bike$hour <- NA 
 bike$hour <- hour(bike$started_at)
+sum_hour <- bike %>%
+            group_by(hour) %>%
+            summarise(sum_hour = length(hour)) 
 
-#ask about the statement of p-value too.
-ggplot(bike, aes(hour))+
-  geom_line(stat = "bin", bins = 30)
-summary(bike$hour)
+ggplot(avg_hour, aes(hour, sum_hour ))+
+  geom_line(color = "#8C6BB1", size = 1) +
+  geom_point(color = "#8C96C6", size = 2) +
+  scale_x_continuous(breaks=seq(0,23,1))+
+  labs(title="Use by hour", y = "")+
+  theme_classic()
+
 ```
+**What is the hourly use of each day?**
+```{r}
+
+sum_hour <- bike %>%
+            group_by(days, hour)%>% summarise(count = n())
+
+ggplot(data = sum_hour, aes(x = hour, y = count,  color = days))+
+  geom_point() + geom_line(aes(group = 1))+
+  facet_grid(rows = vars(days))+         
+  scale_color_manual(values=c("#BFD3E6", "#9EBCDA" ,"#8C96C6" ,"#8C6BB1", "#88419D", "#810F7C", "#4D004B"))+
+  guides("none")+
+  scale_y_continuous(breaks=seq(0,130,50))+ 
+  scale_x_continuous(breaks=seq(0,23,1))+
+    theme(
+    plot.background = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank()
+  )  
+
+```
+
 **Is there a correlation between time and day of usage?**
 ```{r}
-aov(hour ~ days, data = bike)
+glm(hour ~ days, data = bike, family = )
+
 ```
 **What is the average trip distance?**
 ```{r}
