@@ -1,33 +1,65 @@
 ---
-title: "EDA Amjad"
-output: html_document
-date: "2022-10-06"
+title: "EDA"
+author: "Amjad Altuwayjiri"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    code_folding: hide
+    number_sections: no
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
 ---
-#Data loading and structure
-```{r}
-knitr::opts_chunk$set(echo = TRUE)
+# Data loading and structure
+```{r, include=FALSE}
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(RColorBrewer)
 library(lubridate)
+library(ezids)
+library(sf)
 
 ```
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
 bike <- read.csv("bo.csv")
 
-str(bike)
 ```
 
-
+### How the data look like
 ```{r}
 head(bike, n=4)
 ```
+# Data preparing
+### Dealing with NA values
+```{r, results='markup'}
+print(paste(sum(is.na(bike)), "number of NA in the data"))
+sapply(bike, function(y) sum(length(which(is.na(y)))))
+```
 
-#Data preparing 
+Most of Na in the columns `start_station_id and` and `end_station_id`. However, since the name of the station is present I don't think we should delete the whole row! and for further investigation I subset the NA values to track any pattern. 
+```{r,results='markup'}
+#subdset the nas in end_station_id
+#navalues <- bike[bike$end_station_id[which(bike$end_station_id == NA),]]
+#head(navalues)
+```
+
+We can see a repetition of `end_station_name` and `start_station_name` so lets check if the station names are present in the main data `bike`?
+
 ```{r}
+#check if the nas has equivilant in the main data
+#station_name <- bike$start_station_name %in% navalues$start_station_name
+station1 <- subset(bike, end_station_name == "Scioto Audubon Center", select=c(end_station_name, end_station_id))
+
+#same_name<-sum(station_name[station_name == TRUE])
+```
+I created a boolian value to check if the name of station in the subset is present in the main dataset.
+
+### Change columns type  
+```{r, results='markup'}
 # change rideable_type/ member_casual to factor 
 #there three numbers under the factor rideable_type needs to look into!
 bike$rideable_type <- factor(bike$rideable_type)
@@ -40,15 +72,13 @@ bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M:%S")
 bike$start_date <- as.Date(bike$started_at)
 bike$end_date <- as.Date(bike$ended_at)
 
-# change time column to time column
-
 # Check the structure again
 str(bike)
 ```
 
-#Data analysis & visualazation
-**How many users of each membership type we have?**
-```{r}
+# Data analysis & visualazation
+### How many users of each membership type we have?
+```{r, results='markup'}
 bike %>% count(member_casual)
 ggplot(bike, aes(member_casual, fill = member_casual))+
   geom_bar()+
@@ -57,10 +87,11 @@ ggplot(bike, aes(member_casual, fill = member_casual))+
   labs(title = "User membersip types", x= "types of memebership")+
   theme_classic()
 ```
+
 There are more causal (24-hour pass or 3-day pass user) than annual members users by around 1000 difference in August 2022. There are two types of the Causal member which are Single trip cost 2.25 per 30m and 8 for unlimited 30m ride in a day, annual membership on the other hand cost 85$ a year. 
 
-**What is the most frequent bike type used?**
-```{r}
+### What is the most frequent bike type used?
+```{r, results='markup'}
 ggplot(bike, aes(rideable_type, fill = rideable_type))+
   geom_bar()+
   scale_fill_brewer(palette = "BuPu")+
@@ -69,9 +100,11 @@ ggplot(bike, aes(rideable_type, fill = rideable_type))+
   theme_classic()
   
 ```
+
 There are few users of docked bike type comparing to the others. Docked bike is a bicycles that can be borrowed or rented from an automated station or "docking stations". It is interesting why would people prefer other types above this type!
-**casual members prefer watch type? VS members**
-```{r}
+
+### casual members prefer watch type? VS members
+```{r, results='markup'}
 # grouping types of users and counting their used bike type without counting docked_bike because it is only 3 users
 members_preferance <- bike %>% group_by(member_casual, rideable_type)%>%
   filter(rideable_type != "docked_bike")%>%
@@ -83,17 +116,19 @@ ggplot(members_preferance, aes(x= member_casual,y = used , fill = rideable_type)
   labs(title = "Most used bike type to user", x= "type of user", y="")+
   theme_classic()
 ```
+
 While there is no huge difference between annual members in choosing classic or electric bikes, Casual members choose to use electric bikes over the classic by around 680 user. 
 
-**contingency table between customer type and bike type**
-```{r}
+### contingency table between customer type and bike type
+```{r, results='markup'}
 #the probability of each user to pick this type of bike
 round(table(bike$member_casual, bike$rideable_type), 2)
 ```
+
 While there is almost even number of the annual member to choose electric or classic bike,casual users are more likely to choose electric bike. 
 
-**Which day of the week the serves is used more?**
-```{r}
+### Which day of the week the serves is used more?
+```{r, results='markup'}
 #extrat only the day and convert it to day of the week
 bike$days <- format(bike$start_date, format = "%a")
 #convert it to a factor and organize the days order
@@ -107,10 +142,11 @@ ggplot(bike, aes(days, fill = days))+
   labs(title = "Number of users in the days of the week", x="Days of the week")+
   theme_classic()
 ```
+
 Saturdays and Wednesdays have the most number of users but overall there is no big difference between the days of the week in the count of users. 
 
-**When is the highest-lowest time of use of the day?**
-```{r}
+### When is the highest-lowest time of use of the day?
+```{r, results='markup'}
 #get only the hour from the time
 bike$hour <- NA 
 bike$hour <- hour(bike$started_at)
@@ -118,7 +154,7 @@ sum_hour <- bike %>%
             group_by(hour) %>%
             summarise(sum_hour = length(hour)) 
 
-ggplot(avg_hour, aes(hour, sum_hour ))+
+ggplot(sum_hour, aes(hour, sum_hour ))+
   geom_line(color = "#8C6BB1", size = 1) +
   geom_point(color = "#8C96C6", size = 2) +
   scale_x_continuous(breaks=seq(0,23,1))+
@@ -126,8 +162,11 @@ ggplot(avg_hour, aes(hour, sum_hour ))+
   theme_classic()
 
 ```
-**What is the hourly use of each day?**
-```{r}
+
+
+
+### What is the hourly use of each day?
+```{r, results='markup'}
 
 sum_hour <- bike %>%
             group_by(days, hour)%>% summarise(count = n())
@@ -136,7 +175,7 @@ ggplot(data = sum_hour, aes(x = hour, y = count,  color = days))+
   geom_point() + geom_line(aes(group = 1))+
   facet_grid(rows = vars(days))+         
   scale_color_manual(values=c("#BFD3E6", "#9EBCDA" ,"#8C96C6" ,"#8C6BB1", "#88419D", "#810F7C", "#4D004B"))+
-  guides("none")+
+  labs(title= "Use by day and hour")+
   scale_y_continuous(breaks=seq(0,130,50))+ 
   scale_x_continuous(breaks=seq(0,23,1))+
     theme(
@@ -148,9 +187,67 @@ ggplot(data = sum_hour, aes(x = hour, y = count,  color = days))+
 
 ```
 
+
+### Where are the most used stations
+
+```{r, results='markup'}
+#library(sf)
+#ggplot()+ geom_sf(bike, aes(start_lat, start_lng))
+#end_station$sum_att <- end_station%>% group_by(end_lat, end_lng) %>% summarise(count = length(end_lng))
+#
+#
+#install.packages("mapview")
+library(mapview)
+#subset without the na 
+end_station <- subset(bike, (!is.na(bike[,11])) & (!is.na(bike[,12])))
+#if there is dincity change the color
+#when chotching the point give me the name of the station 
+#have the car for ohaio
+mapview(bike, xcol = "start_lat", ycol = "start_lng", crs = 3735, grid = FALSE, lable = "Start Station")
+
+mapview(end_station, xcol = "end_lat", ycol = "end_lng", crs = 3735, grid = FALSE)
+#
+#
+#look <- st_as_sf(bike, coords = c("start_lat", "start_lng"),  crs = 4326)
+#mapview(look, map.types = "Stamen.Toner") 
+#library(ggmap)
+#map_sf <- get_map('Ohio', zoom = 12, maptype = 'satellite')
+#ggmap(map_sf) +
+#  stat_density2d(data = bike, aes(x = start_lng, y = start_lat, fill = ..density..), geom = 'tile', contour = F, alpha = .5) +  
+#  scale_fill_viridis()
+```
+
+```{r}
+
+library(sp)
+library(sf)
+#> Linking to GEOS 3.6.1, GDAL 2.2.3, PROJ 4.9.3
+library(mapview)
+
+test.coords<-as.data.frame(cbind(c(runif(15,-180,-130),runif(5,160,180)),runif(20,40,60)))
+test.sp <- SpatialPointsDataFrame(coords = cbind(test.coords$V1,test.coords$V2), data = test.coords,
+                                  proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+
+test_sf = st_as_sf(test.sp)
+
+shift = function(x) {
+    geom = st_geometry(x)
+    st_geometry(x) = st_sfc(
+        lapply(seq_along(geom), function(i) {
+            geom[[i]][1] = ifelse(geom[[i]][1] < 0, geom[[i]][1] + 360, geom[[i]][1])
+            return(geom[[i]])
+        })
+        , crs = st_crs(geom)
+    )
+    return(x)
+}
+
+mapview(shift(test_sf)) +
+    mapview(test_sf, col.regions = "orange")
+```
 **Is there a correlation between time and day of usage?**
 ```{r}
-glm(hour ~ days, data = bike, family = )
+#glm(hour ~ days, data = bike, family = )
 
 ```
 **What is the average trip distance?**
@@ -160,11 +257,6 @@ glm(hour ~ days, data = bike, family = )
 **probopality of user membership and distance time**
 ```{r}
 #y1 = contenuse, y2 = binary
-t.test(dis_time ~ member_casual, var.equal = FALSE)
-
-```
-**where are the most used stations**
-#heat map
-```{r}
+#t.test(dis_time ~ member_casual, var.equal = FALSE)
 
 ```
