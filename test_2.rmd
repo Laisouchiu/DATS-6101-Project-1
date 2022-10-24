@@ -1,0 +1,22 @@
+
+``` {R, result='asis'}
+
+library(geosphere)
+library(dplyr)
+
+data <- read.csv("test_2.csv", header=TRUE)
+
+#data
+#geo <- distm(c(10, 9), c(12, 11), fun = distGeo)
+#geo_2 <- distVincentyEllipsoid(data[,10:9],  data[,12:11]) 
+#geo_2
+#with(data, mapply(data, lat1=9, long1=10, lat2=11, long2=12) )
+
+new_data= 
+  data %>%
+  rowwise() %>%
+  mutate(Distance = distHaversine(c(10,9), c(12,11)))
+
+new_data
+
+```
