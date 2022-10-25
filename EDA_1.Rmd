@@ -1,0 +1,298 @@
+---
+title: "EDA"
+author: "Amjad Altuwayjiri"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    code_folding: hide
+    number_sections: no
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
+---
+# Data loading and structure
+```{r, include=FALSE}
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+options(scientific=T, digits = 3) 
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(RColorBrewer)
+library(lubridate)
+library(ezids)
+library(sf)
+
+```
+
+```{r setup, include=FALSE}
+
+bike <- read.csv("bo.csv")
+str(bike)
+
+```
+
+### How the data look like
+```{r}
+head(bike, n=4)
+```
+# Data preparing
+### Dealing with NA values
+```{r, results='markup'}
+print(paste(sum(is.na(bike)), "number of NA in the data"))
+sapply(bike, function(y) sum(length(which(is.na(y)))))
+```
+
+Most of Na in the columns `start_station_id and` and `end_station_id`. However, since the name of the station is present I don't think we should delete the whole row! 
+
+### Change columns type  
+```{r, results='markup'}
+# change rideable_type/ member_casual to factor 
+#there three numbers under the factor rideable_type needs to look into!
+bike$rideable_type <- factor(bike$rideable_type)
+bike$member_casual <- factor(bike$member_casual)
+
+# split started_at/ ended_at to date column and time column
+# change start_date/end_date to date type
+bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M:%S") 
+bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M:%S") 
+bike$start_date <- as.Date(bike$started_at)
+bike$end_date <- as.Date(bike$ended_at)
+
+# Check the structure again
+str(bike)
+```
+
+# Data analysis & visualazation
+### How many users of each membership type we have?
+```{r, results='markup'}
+bike %>% count(member_casual)
+ggplot(bike, aes(member_casual, fill = member_casual))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "User membersip types", x= "types of memebership")+
+  theme_classic()
+```
+
+There are more `causal` users (24-hour pass or 3-day pass user) than `annual` members users by around *1000* user difference on August 2022. Also, there are two types of the `causal` users which are **Single** trip cost 2.25\$ per 30min and 8\$ for unlimited 30min ride in a day, `annual` membership on the other hand cost 85$ a year. 
+
+### What is the most frequent bike type used?
+```{r, results='markup'}
+ggplot(bike, aes(rideable_type, fill = rideable_type))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "Types of used biks", x = "")+
+  theme_classic()
+  
+```
+
+There are few users of `docked_bike` type comparing to the others. *Docked bike* is a bicycles that can be borrowed or rented from an automated station or "docking stations". It is interesting why would people prefer other types above this type! Therefore we recommend the company to not invest in this type.
+
+### casual members prefer watch type? VS members
+```{r, results='markup'}
+# grouping types of users and counting their used bike type without counting docked_bike because it is only 3 users
+members_preferance <- bike %>% group_by(member_casual, rideable_type)%>%
+  filter(rideable_type != "docked_bike")%>%
+  summarise(used = n())
+print(members_preferance)
+
+ggplot(members_preferance, aes(x= member_casual,y = used , fill = rideable_type))+
+  geom_bar(position='dodge', stat='identity')+
+  scale_fill_brewer(palette = "BuPu")+
+  labs(title = "Most used bike type to user", x= "type of user", y="")+
+  theme_classic()
+```
+
+While there is no huge difference between *annual* members in choosing `classic` or `electric` bikes, *casual* members choose to use `electric` bikes over the `classic` by around 680 user. 
+
+### contingency table between customer type and bike type
+```{r, results='markup'}
+#the probability of each user to pick this type of bike
+rieds = table(bike$member_casual, bike$rideable_type)
+xkabledply(round(rieds,2), title="Contingency table for bike type vs User membership")
+```
+
+While there is almost even number of the *annual member* choose `electric` or `classic` bike,*casual users* are more likely to choose `electric` bike. 
+```{r}
+#I think I can do chi-square in here
+chisq.test(rieds)
+```
+### Which day of the week the serves is used more?
+```{r, results='markup'}
+#extrat only the day and convert it to day of the week
+bike$days <- format(bike$start_date, format = "%a")
+#convert it to a factor and organize the days order
+bike$days <- factor(bike$days, levels = c("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri" ))
+
+
+ggplot(bike, aes(days, fill = days))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "Number of users in the days of the week", x="Days of the week")+
+  theme_classic()
+```
+
+Saturdays and Wednesdays have the most number of users but overall there is no big difference between the days of the week in the count of users. 
+
+### When is the highest-lowest time of use of the day?
+```{r, results='markup'}
+#get only the hour from the time
+bike$hour <- NA 
+bike$hour <- hour(bike$started_at)
+sum_hour <- bike %>%
+            group_by(hour) %>%
+            summarise(sum_hour = length(hour)) 
+
+ggplot(sum_hour, aes(hour, sum_hour ))+
+  geom_line(color = "#8C6BB1", size = 1) +
+  geom_point(color = "#8C96C6", size = 2) +
+  scale_x_continuous(breaks=seq(0,23,1))+
+  labs(title="Use by hour", y = "")+
+  theme_classic()
+
+```
+
+The peak hours of August is between 3:00pm to 8:00pm in range of 200 user. 
+
+
+### What is the hourly use of each day?
+```{r, results='markup'}
+
+sum_hour <- bike %>%
+            group_by(days, hour)%>% summarise(count = n())
+
+ggplot(data = sum_hour, aes(x = hour, y = count,  color = days))+
+  geom_point() + geom_line(aes(group = 1))+
+  facet_grid(rows = vars(days))+         
+  scale_color_manual(values=c("#BFD3E6", "#9EBCDA" ,"#8C96C6" ,"#8C6BB1", "#88419D", "#810F7C", "#4D004B"))+
+  labs(title= "Use by day and hour")+
+  scale_y_continuous(breaks=seq(0,130,50))+ 
+  scale_x_continuous(breaks=seq(0,23,1))+
+    theme(
+    plot.background = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank()
+  )  
+
+```
+
+During the *weekend* hours, the rushing hour start at 9:00am while in the *weekdays* it starts earlier at 6:00am. Also, in most of the *weekdays* the line does not drop until 10:00pm but it drop a little earlier during the *weekends* at 9:00pm. 
+
+
+### Where are the most used stations
+
+```{r, results='markup'}
+#subset without the na 
+end_station <- subset(bike, (!is.na(bike[,11])) & (!is.na(bike[,12])))
+
+library(ggmap)
+register_google(key = )
+#end station
+bikemap <-ggmap(get_googlemap(center = c(lon = -82.99879, lat=	39.96118),
+                    maptype = 'terrain',
+                    color = "color",
+                    zoom = 11))
+
+bikemap1 <- bikemap + stat_bin2d(data = end_station, aes(x =end_lng, y = end_lat, size = end_station_id, color =end_station_id), alpha = 0.7)+labs(title = "End Stations")+scale_fill_gradient(low = "blue", high = "red", name ="user") 
+
+
+#start stations
+
+bikemap2 <- bikemap + stat_bin2d(data = bike, aes(x =start_lng, y = start_lat, size = start_station_id, color =start_station_id), alpha =0.7)+labs(title = "Start Stations")+scale_fill_gradient(low = "blue", high = "red", name = "user")
+
+print(bikemap1)
+print(bikemap2)
+```
+
+For both start and end destination there is more users in the middle of the map (250 customers) than moving away from the center (less than 250 customers). In addition, customers start their trips at the center of while it is more scattered in the end station. So at the beginning of each day we must make sure that there are enough bikes in the center ready for customers. Also, for both end and start trips 
+
+```{r}
+#Load modified data with the pricing and distance
+pric <- read.csv("202207-cogo-tripdata.csv")
+price <- subset(pric,select=c(member_casual, Pricing, TimeDiff, rideable_type))
+
+```
+
+### How much casual members spend?
+```{r, results='markup'}
+casual_price <- subset(price,member_casual == "casual")
+round(summary(casual_price$Pricing),2)
+
+```
+
+The average spent of `casual` members is 2,40$ and maximum of 8.75\$
+
+```{r, results='markup'}
+ggplot(casual_price,aes(Pricing))+
+  geom_histogram(fill = "#8C6BB1", alpha=.5, bins = 30, na.rm = T)+
+  labs(title = "Casual customesr payments")+
+  theme_classic()
+```
+The histogram is a right skewed and there are ouliers.
+
+### invistigate the outliers of the price
+
+*What type of bikes they use?*
+```{r}
+
+ggplot(casual_price, aes(rideable_type, Pricing))+
+  geom_boxplot(outlier.colour = "#810F7C", na.rm =T)+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  expand_limits(y = 2)+
+  labs(title = "Check the outliers comparaing to bike type", x = "")+
+  theme_classic()
+
+```
+By comparing the mass of the two types the `classic_bike` has bigger mass from 2.50\$ to above 3\$ while people who use `electric_bike` the first quartile to the third quartile is around 2.50\$. Ther are more autliers in `electric_bike` than `classic_bike` but not that big difference. 
+
+*After deleteig the ouliers*
+```{r}
+narm_pr<-outlierKD2(casual_price, Pricing, histogram = T)
+nprice <- nrow(price)
+nrmprice <- nrow(narm_pr)
+```
+
+After deleting the outliers of the `price` `r nprice` rows, it became `r nrmprice` less by `r nprice - nrmprice` and the shape changed .
+
+
+
+```{r}
+#the mode function
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+payment <- narm_pr%>% 
+           group_by(rideable_type)%>%
+           summarise(sum_price = round(sum(Pricing),2),
+           mean_price = round(mean(Pricing),2),
+           mode_price = getmode(Pricing))
+
+xkabledply(payment)
+
+```
+
+The average price of people who use `electric_bike` is the same as `classic_bike`. However, the mode is different that there are more customers who use `electric bike` pay 0.15\$ than the `classic_bike`. The sum meney of `electric_bike` is more than `classic_bike` but it is understandable because the number of users are more.
+
+
+## What is the average trip distance?
+```{r}
+#calculating the time dieffence
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
+
+bike$time_diff <- difftime(bike$enddat, bike$Startedat, units = "mins")
+```
+**probopality of user membership and distance time**
+```{r}
+bike$start_time
+#y1 = contenuse, y2 = binary
+#t.test(dis_time ~ member_casual, var.equal = FALSE)
+
+```
