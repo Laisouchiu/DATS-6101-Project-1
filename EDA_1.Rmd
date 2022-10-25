@@ -13,6 +13,9 @@ output:
 ---
 # Data loading and structure
 ```{r, include=FALSE}
+knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+options(scientific=T, digits = 3) 
+
 library(ggplot2)
 library(dplyr)
 library(tidyr)
@@ -108,11 +111,15 @@ While there is no huge difference between *annual* members in choosing `classic`
 ### contingency table between customer type and bike type
 ```{r, results='markup'}
 #the probability of each user to pick this type of bike
-round(table(bike$member_casual, bike$rideable_type), 2)
+rieds = table(bike$member_casual, bike$rideable_type)
+xkabledply(round(rieds,2), title="Contingency table for bike type vs User membership")
 ```
 
 While there is almost even number of the *annual member* choose `electric` or `classic` bike,*casual users* are more likely to choose `electric` bike. 
-
+```{r}
+#I think I can do chi-square in here
+chisq.test(rieds)
+```
 ### Which day of the week the serves is used more?
 ```{r, results='markup'}
 #extrat only the day and convert it to day of the week
@@ -180,35 +187,35 @@ During the *weekend* hours, the rushing hour start at 9:00am while in the *weekd
 ### Where are the most used stations
 
 ```{r, results='markup'}
-
-library(mapview)
 #subset without the na 
 end_station <- subset(bike, (!is.na(bike[,11])) & (!is.na(bike[,12])))
 
-#have the car for ohaio
-mapview(bike, xcol = "start_lat", ycol = "start_lng", crs = 3730, grid = FALSE, lable = "Start Station")
-
-mapview(end_station, xcol = "end_lat", ycol = "end_lng",crs = 3735, grid = FALSE)
-#
-#
 library(ggmap)
-library(ggplot2)
 register_google(key = )
-
+#end station
 bikemap <-ggmap(get_googlemap(center = c(lon = -82.99879, lat=	39.96118),
                     maptype = 'terrain',
                     color = "color",
                     zoom = 11))
-geom_point(data = end_station, aes(x =end_lng, y = end_lat), size = 10, color = "red")
-print(bikemap) 
 
+bikemap1 <- bikemap + stat_bin2d(data = end_station, aes(x =end_lng, y = end_lat, size = end_station_id, color =end_station_id), alpha = 0.7)+labs(title = "End Stations")+scale_fill_gradient(low = "blue", high = "red", name ="user") 
+
+
+#start stations
+
+bikemap2 <- bikemap + stat_bin2d(data = bike, aes(x =start_lng, y = start_lat, size = start_station_id, color =start_station_id), alpha =0.7)+labs(title = "Start Stations")+scale_fill_gradient(low = "blue", high = "red", name = "user")
+
+print(bikemap1)
+print(bikemap2)
 ```
-Unfortunately I could not apply the data to the graph! but I worked days on it even I had my Google map API for it so I will leave it for hard work recognition =)
+
+For both start and end destination there is more users in the middle of the map (250 customers) than moving away from the center (less than 250 customers). In addition, customers start their trips at the center of while it is more scattered in the end station. So at the beginning of each day we must make sure that there are enough bikes in the center ready for customers. Also, for both end and start trips 
 
 ```{r}
 #Load modified data with the pricing and distance
 pric <- read.csv("202207-cogo-tripdata.csv")
-price <- subset(pric,select=c(member_casual, Pricing, Distance, rideable_type))
+price <- subset(pric,select=c(member_casual, Pricing, TimeDiff, rideable_type))
+
 ```
 
 ### How much casual members spend?
@@ -273,18 +280,18 @@ xkabledply(payment)
 
 The average price of people who use `electric_bike` is the same as `classic_bike`. However, the mode is different that there are more customers who use `electric bike` pay 0.15\$ than the `classic_bike`. The sum meney of `electric_bike` is more than `classic_bike` but it is understandable because the number of users are more.
 
-**Is there a correlation between time and day of usage?**
-```{r}
-#glm(hour ~ days, data = bike, family = )
-```
 
-```
-**What is the average trip distance?**
+## What is the average trip distance?
 ```{r}
+#calculating the time dieffence
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
 
+bike$time_diff <- difftime(bike$enddat, bike$Startedat, units = "mins")
 ```
 **probopality of user membership and distance time**
 ```{r}
+bike$start_time
 #y1 = contenuse, y2 = binary
 #t.test(dis_time ~ member_casual, var.equal = FALSE)
 
