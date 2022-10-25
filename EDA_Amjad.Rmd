@@ -26,6 +26,7 @@ library(sf)
 ```{r setup, include=FALSE}
 
 bike <- read.csv("bo.csv")
+str(bike)
 
 ```
 
@@ -40,23 +41,7 @@ print(paste(sum(is.na(bike)), "number of NA in the data"))
 sapply(bike, function(y) sum(length(which(is.na(y)))))
 ```
 
-Most of Na in the columns `start_station_id and` and `end_station_id`. However, since the name of the station is present I don't think we should delete the whole row! and for further investigation I subset the NA values to track any pattern. 
-```{r,results='markup'}
-#subdset the nas in end_station_id
-#navalues <- bike[bike$end_station_id[which(bike$end_station_id == NA),]]
-#head(navalues)
-```
-
-We can see a repetition of `end_station_name` and `start_station_name` so lets check if the station names are present in the main data `bike`?
-
-```{r}
-#check if the nas has equivilant in the main data
-#station_name <- bike$start_station_name %in% navalues$start_station_name
-#station1 <- subset(bike, end_station_name == "Scioto Audubon Center", select=c(end_station_name, end_station_id))
-
-#same_name<-sum(station_name[station_name == TRUE])
-```
-I created a boolian value to check if the name of station in the subset is present in the main dataset.
+Most of Na in the columns `start_station_id and` and `end_station_id`. However, since the name of the station is present I don't think we should delete the whole row! 
 
 ### Change columns type  
 ```{r, results='markup'}
@@ -88,7 +73,7 @@ ggplot(bike, aes(member_casual, fill = member_casual))+
   theme_classic()
 ```
 
-There are more causal (24-hour pass or 3-day pass user) than annual members users by around 1000 difference in August 2022. There are two types of the Causal member which are Single trip cost 2.25 per 30m and 8 for unlimited 30m ride in a day, annual membership on the other hand cost 85$ a year. 
+There are more `causal` users (24-hour pass or 3-day pass user) than `annual` members users by around *1000* user difference on August 2022. Also, there are two types of the `causal` users which are **Single** trip cost 2.25\$ per 30min and 8\$ for unlimited 30min ride in a day, `annual` membership on the other hand cost 85$ a year. 
 
 ### What is the most frequent bike type used?
 ```{r, results='markup'}
@@ -101,7 +86,7 @@ ggplot(bike, aes(rideable_type, fill = rideable_type))+
   
 ```
 
-There are few users of docked bike type comparing to the others. Docked bike is a bicycles that can be borrowed or rented from an automated station or "docking stations". It is interesting why would people prefer other types above this type!
+There are few users of `docked_bike` type comparing to the others. *Docked bike* is a bicycles that can be borrowed or rented from an automated station or "docking stations". It is interesting why would people prefer other types above this type! Therefore we recommend the company to not invest in this type.
 
 ### casual members prefer watch type? VS members
 ```{r, results='markup'}
@@ -110,6 +95,7 @@ members_preferance <- bike %>% group_by(member_casual, rideable_type)%>%
   filter(rideable_type != "docked_bike")%>%
   summarise(used = n())
 print(members_preferance)
+
 ggplot(members_preferance, aes(x= member_casual,y = used , fill = rideable_type))+
   geom_bar(position='dodge', stat='identity')+
   scale_fill_brewer(palette = "BuPu")+
@@ -117,7 +103,7 @@ ggplot(members_preferance, aes(x= member_casual,y = used , fill = rideable_type)
   theme_classic()
 ```
 
-While there is no huge difference between annual members in choosing classic or electric bikes, Casual members choose to use electric bikes over the classic by around 680 user. 
+While there is no huge difference between *annual* members in choosing `classic` or `electric` bikes, *casual* members choose to use `electric` bikes over the `classic` by around 680 user. 
 
 ### contingency table between customer type and bike type
 ```{r, results='markup'}
@@ -125,7 +111,7 @@ While there is no huge difference between annual members in choosing classic or 
 round(table(bike$member_casual, bike$rideable_type), 2)
 ```
 
-While there is almost even number of the annual member to choose electric or classic bike,casual users are more likely to choose electric bike. 
+While there is almost even number of the *annual member* choose `electric` or `classic` bike,*casual users* are more likely to choose `electric` bike. 
 
 ### Which day of the week the serves is used more?
 ```{r, results='markup'}
@@ -163,6 +149,7 @@ ggplot(sum_hour, aes(hour, sum_hour ))+
 
 ```
 
+The peak hours of August is between 3:00pm to 8:00pm in range of 200 user. 
 
 
 ### What is the hourly use of each day?
@@ -186,6 +173,8 @@ ggplot(data = sum_hour, aes(x = hour, y = count,  color = days))+
   )  
 
 ```
+
+During the *weekend* hours, the rushing hour start at 9:00am while in the *weekdays* it starts earlier at 6:00am. Also, in most of the *weekdays* the line does not drop until 10:00pm but it drop a little earlier during the *weekends* at 9:00pm. 
 
 
 ### Where are the most used stations
@@ -214,7 +203,75 @@ geom_point(data = end_station, aes(x =end_lng, y = end_lat), size = 10, color = 
 print(bikemap) 
 
 ```
+Unfortunately I could not apply the data to the graph! but I worked days on it even I had my Google map API for it so I will leave it for hard work recognition =)
 
+```{r}
+#Load modified data with the pricing and distance
+pric <- read.csv("202207-cogo-tripdata.csv")
+price <- subset(pric,select=c(member_casual, Pricing, Distance, rideable_type))
+```
+
+### How much casual members spend?
+```{r, results='markup'}
+casual_price <- subset(price,member_casual == "casual")
+round(summary(casual_price$Pricing),2)
+
+```
+
+The average spent of `casual` members is 2,40$ and maximum of 8.75\$
+
+```{r, results='markup'}
+ggplot(casual_price,aes(Pricing))+
+  geom_histogram(fill = "#8C6BB1", alpha=.5, bins = 30, na.rm = T)+
+  labs(title = "Casual customesr payments")+
+  theme_classic()
+```
+The histogram is a right skewed and there are ouliers.
+
+### invistigate the outliers of the price
+
+*What type of bikes they use?*
+```{r}
+
+ggplot(casual_price, aes(rideable_type, Pricing))+
+  geom_boxplot(outlier.colour = "#810F7C", na.rm =T)+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  expand_limits(y = 2)+
+  labs(title = "Check the outliers comparaing to bike type", x = "")+
+  theme_classic()
+
+```
+By comparing the mass of the two types the `classic_bike` has bigger mass from 2.50\$ to above 3\$ while people who use `electric_bike` the first quartile to the third quartile is around 2.50\$. Ther are more autliers in `electric_bike` than `classic_bike` but not that big difference. 
+
+*After deleteig the ouliers*
+```{r}
+narm_pr<-outlierKD2(casual_price, Pricing, histogram = T)
+nprice <- nrow(price)
+nrmprice <- nrow(narm_pr)
+```
+
+After deleting the outliers of the `price` `r nprice` rows, it became `r nrmprice` less by `r nprice - nrmprice` and the shape changed .
+
+
+
+```{r}
+#the mode function
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+payment <- narm_pr%>% 
+           group_by(rideable_type)%>%
+           summarise(sum_price = round(sum(Pricing),2),
+           mean_price = round(mean(Pricing),2),
+           mode_price = getmode(Pricing))
+
+xkabledply(payment)
+
+```
+
+The average price of people who use `electric_bike` is the same as `classic_bike`. However, the mode is different that there are more customers who use `electric bike` pay 0.15\$ than the `classic_bike`. The sum meney of `electric_bike` is more than `classic_bike` but it is understandable because the number of users are more.
 
 **Is there a correlation between time and day of usage?**
 ```{r}
