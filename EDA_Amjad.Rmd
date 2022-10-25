@@ -52,7 +52,7 @@ We can see a repetition of `end_station_name` and `start_station_name` so lets c
 ```{r}
 #check if the nas has equivilant in the main data
 #station_name <- bike$start_station_name %in% navalues$start_station_name
-station1 <- subset(bike, end_station_name == "Scioto Audubon Center", select=c(end_station_name, end_station_id))
+#station1 <- subset(bike, end_station_name == "Scioto Audubon Center", select=c(end_station_name, end_station_id))
 
 #same_name<-sum(station_name[station_name == TRUE])
 ```
@@ -191,63 +191,35 @@ ggplot(data = sum_hour, aes(x = hour, y = count,  color = days))+
 ### Where are the most used stations
 
 ```{r, results='markup'}
-#library(sf)
-#ggplot()+ geom_sf(bike, aes(start_lat, start_lng))
-#end_station$sum_att <- end_station%>% group_by(end_lat, end_lng) %>% summarise(count = length(end_lng))
-#
-#
-#install.packages("mapview")
+
 library(mapview)
 #subset without the na 
 end_station <- subset(bike, (!is.na(bike[,11])) & (!is.na(bike[,12])))
-#if there is dincity change the color
-#when chotching the point give me the name of the station 
+
 #have the car for ohaio
-mapview(bike, xcol = "start_lat", ycol = "start_lng", crs = 3735, grid = FALSE, lable = "Start Station")
+mapview(bike, xcol = "start_lat", ycol = "start_lng", crs = 3730, grid = FALSE, lable = "Start Station")
 
-mapview(end_station, xcol = "end_lat", ycol = "end_lng", crs = 3735, grid = FALSE)
+mapview(end_station, xcol = "end_lat", ycol = "end_lng",crs = 3735, grid = FALSE)
 #
 #
-#look <- st_as_sf(bike, coords = c("start_lat", "start_lng"),  crs = 4326)
-#mapview(look, map.types = "Stamen.Toner") 
-#library(ggmap)
-#map_sf <- get_map('Ohio', zoom = 12, maptype = 'satellite')
-#ggmap(map_sf) +
-#  stat_density2d(data = bike, aes(x = start_lng, y = start_lat, fill = ..density..), geom = 'tile', contour = F, alpha = .5) +  
-#  scale_fill_viridis()
+library(ggmap)
+library(ggplot2)
+register_google(key = )
+
+bikemap <-ggmap(get_googlemap(center = c(lon = -82.99879, lat=	39.96118),
+                    maptype = 'terrain',
+                    color = "color",
+                    zoom = 11))
+geom_point(data = end_station, aes(x =end_lng, y = end_lat), size = 10, color = "red")
+print(bikemap) 
+
 ```
 
-```{r}
 
-library(sp)
-library(sf)
-#> Linking to GEOS 3.6.1, GDAL 2.2.3, PROJ 4.9.3
-library(mapview)
-
-test.coords<-as.data.frame(cbind(c(runif(15,-180,-130),runif(5,160,180)),runif(20,40,60)))
-test.sp <- SpatialPointsDataFrame(coords = cbind(test.coords$V1,test.coords$V2), data = test.coords,
-                                  proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
-
-test_sf = st_as_sf(test.sp)
-
-shift = function(x) {
-    geom = st_geometry(x)
-    st_geometry(x) = st_sfc(
-        lapply(seq_along(geom), function(i) {
-            geom[[i]][1] = ifelse(geom[[i]][1] < 0, geom[[i]][1] + 360, geom[[i]][1])
-            return(geom[[i]])
-        })
-        , crs = st_crs(geom)
-    )
-    return(x)
-}
-
-mapview(shift(test_sf)) +
-    mapview(test_sf, col.regions = "orange")
-```
 **Is there a correlation between time and day of usage?**
 ```{r}
 #glm(hour ~ days, data = bike, family = )
+```
 
 ```
 **What is the average trip distance?**
