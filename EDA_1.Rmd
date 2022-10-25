@@ -113,9 +113,17 @@ While there is no huge difference between *annual* members in choosing `classic`
 #the probability of each user to pick this type of bike
 rieds = table(bike$member_casual, bike$rideable_type)
 xkabledply(round(rieds,2), title="Contingency table for bike type vs User membership")
+
+### Expected frequencies $\chi^2$ test of customer type and bike type
+#the probability of each user to pick this type of bike
+rieds = table(bike$member_casual, bike$rideable_type)
+xkabledply(round(rieds,2), title="Contingency table for bike type vs User membership")
+chigoodness <- chisq.test(rieds)
+xkabledply( as.table(chigoodness$expected), title = "Expected frequencies", wide = T)
 ```
 
-While there is almost even number of the *annual member* choose `electric` or `classic` bike,*casual users* are more likely to choose `electric` bike. 
+While there is almost even number of the *annual member* choose `electric` or `classic` bike,*casual users* are more likely to choose `electric` bike. While there is almost even number of the *annual member* choose `electric` or `classic` bike,*casual users* are more likely to choose `electric` bike.  The p-value from `chigoodness$p.value` = `r chigoodness$p.value`. The degree of freedom is given by `chigoodness$parameter` = `r chigoodness$parameter`.
+
 ```{r}
 #I think I can do chi-square in here
 chisq.test(rieds)
