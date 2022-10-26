@@ -241,6 +241,27 @@ print(bikemap2)
 
 For both start and end destination there is more users in the middle of the map (250 customers) than moving away from the center (less than 250 customers). In addition, customers start their trips at the center of while it is more scattered in the end station. So at the beginning of each day we must make sure that there are enough bikes in the center ready for customers. Also, for both end and start trips 
 
+
+```{r}
+bike_1 <- subset(bike, !is.na(start_station_id)) 
+bike_final <- subset(bike_1, !is.na(end_station_id))
+group_location1 <- bike_final%>% 
+                  group_by(start_station_name)%>% 
+                  summarise(count = n())%>%
+                  arrange(desc(count))%>%
+                  slice(1:5)
+group_location2 <- bike_final%>% 
+                  group_by(end_station_name)%>% 
+                  summarise(count = n())%>%
+                  arrange(desc(count))%>%
+                  slice(1:5)
+xkabledply(group_location1 , title = "Top 5 start locations") 
+xkabledply(group_location2 , title = "Top 5 end locations") 
+
+```
+
+The top stations customers start and end their trips at ...... 
+
 # Summary of Statistics & Testing：
 
 ### Summary Statistics 
