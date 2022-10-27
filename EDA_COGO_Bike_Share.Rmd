@@ -222,7 +222,7 @@ During the *weekend* hours, the rush hour start at 9:00am while in the *weekdays
 end_station <- subset(bike, (!is.na(bike[,11])) & (!is.na(bike[,12])))
 
 library(ggmap)
-register_google(key = "AIzaSyA0ztoTDco-EGhyGNmKM1EfUy3pYvlQbQQ")
+register_google(key = "")
 #end station
 bikemap <-ggmap(get_googlemap(center = c(lon = -82.99879, lat=	39.96118),
                     maptype = 'terrain',
