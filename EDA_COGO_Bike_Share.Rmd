@@ -91,8 +91,7 @@ bike$start_date <- as.Date(bike$started_at)
 bike$end_date <- as.Date(bike$ended_at)
 
 # Check the structure again
-bike$start_date
-bike$started_at
+
 str(bike)
 ```
 
@@ -223,7 +222,7 @@ During the *weekend* hours, the rush hour start at 9:00am while in the *weekdays
 end_station <- subset(bike, (!is.na(bike[,11])) & (!is.na(bike[,12])))
 
 library(ggmap)
-register_google(key = "AIzaSyBgZBtqLc-nSWcLKpCjCjcG2CuuXETG_yg")
+register_google(key = "AIzaSyA0ztoTDco-EGhyGNmKM1EfUy3pYvlQbQQ")
 #end station
 bikemap <-ggmap(get_googlemap(center = c(lon = -82.99879, lat=	39.96118),
                     maptype = 'terrain',
@@ -264,41 +263,32 @@ xkabledply(group_location2 , title = "Top 5 end locations")
 
 The top stations customers start and end their trips at ...... 
 
+
 # Summary of Statistics & Testing：
 
 ### Summary Statistics 
 
 First of all, let's look at the summary statistic of these two variables
-
-```{r, results='markup'}
-# New
-
-#library(readr)
-
-#getwd()
-#bike_2 <- data.frame(read.csv('Bike_time.csv'))
-# bike_2$Total.Time = as.numeric(bike_2$Total.Time)
-#str(bike_2)
-
-```
-
 ```{r, results=TRUE}
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
 
+bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
 bike_time <- subset(bike, !is.na(Total_Time), select=Total_Time)
 
 summary(bike_time)
 
 ```
+
 According to the time statistics we can see that, overall, nearly 25% of customers use less than 7-minutes, nearly 50% of customers use less than 13-minutes, and nearly 75% of all customers use less than 25 minutes;
 
-According to this information, we can see we might have few percentage of customers who use more than 30 minutes；The timing price differentiate for different types of customers and different type of bike, so we may divide our data into different groups based on members_casual and bike_type to do the analysis in detailed；
+we don't know anything about the proportion about the time boundary and we could not figure out how many users are riding the bike for more than 30 mins or 45 mins (as after 30 mins and 45 minutes the price increases), so we further drilled down our analytics.
+
+we know that the price for casual users increase after 30 mins and for annual members it increases after 45 mins so we divided our data into different groups based on members_casual and bike_type to do the analysis in detailed；
 Moreover, we have an max value 1499, we want to see which group it is located at and see if that's an occasional case for that group.
 
-(Groups：
-First, pure member,and, pure casual；pure classic, pure electric.
-Then, in more detailed groups：classic & member,and, classic & casual；electric & member，and，electric & casual）
-
 ### Membership vs Casual Customer:
+We subset the time difference variable by member_casual categories. 
 ```{r, results=TRUE}
 
 membership <- subset(bike, !is.na(Total_Time)&member_casual=='member', select=c(member_casual, Total_Time))
@@ -312,6 +302,9 @@ print('')
 print('Casual_customers structure')
 str(casual)
 ```
+
+We check the basic summary statistics for these two subsets：
+
 ```{r, results=TRUE}
 
 print('Summary Statistic for Members')
@@ -325,9 +318,10 @@ sd(casual$Total_Time)
 
 ```
 
-```{r, results=TRUE}
+Because the time boundary (the time that will charge extra fee) for casual customers is 30 minutes and 45 minutes for member customers, so we want to check what's the proportion of these two types of customers who are using more time than the time boundary, and then decide if we can do some price adjustment
+So first, we need to check their data distribution 
 
-library(ggplot2)
+```{r, results=TRUE}
 
 ggplot(data=membership, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for membership customer timing')
 qqnorm(membership$Total_Time, main='qqplot for membership timing', col='red')
@@ -337,23 +331,40 @@ ggplot(data=casual, mapping = aes(Total_Time))+geom_histogram(col='red', fill='b
 qqnorm(casual$Total_Time, main='qqplot for casual timing', col='red')
 qqline(casual$Total_Time, col='blue')
 ```
-From the histogram of two types of customers we can see that, both of the distribuiton are extremely right-skewed, but we can see that there's not so much data distributed in the extreme right tail (we can also see that in the QQ-Plot because most of data are lying on the qqline, which are normally distributed), so we may say the extreme max values are happend occasionally and now we will now exclude the outliers and build the distribution again to see the results again. 
+
+From the histogram of two types of customers we can see that, both of the distribution are extremely right-skewed, but we can see that there's not so much data distributed in the extreme right tail (we can also see that in the QQ-Plot because most of data are lying on the qqline, which are normally distributed), so we may say the extreme max values are happens occasionally and now we will exclude the outliers and build the distribution to see the results again. 
 
 ```{r, results=TRUE}
 
-library(ggplot2)
+membership_clean_1 <- outlierKD2 (membership, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+print('Summary Statistic for cleaned membership time')
+summary(membership_clean_1)
 
-membership_clean <- ezids::outlierKD2 (membership, Total_Time, qqplt = TRUE)
-sd(membership_clean$Total_Time)
-
-casual_clean <- ezids::outlierKD2 (casual, Total_Time, qqplt = TRUE)
-sd(casual_clean$Total_Time)
+casual_clean_1 <- outlierKD2 (casual, Total_Time, rm=T, boxplt=TRUE, qqplt = TRUE)
+print('Summary Statistic for cleaned casual time')
+summary(casual_clean_1)
 
 ```
-After we clean out the outliers, we see the distribution (are still not totally normal distributed, so we decide to use t-distribution? use z-test seems to be more accurate) to check the probability that's more than the price boundaries (30 mins for casual & 45 mins for member)
+
+Above we cleaned the outliers and replaced it with null values; to see the charts more clear, we removed the null values and created histogram and boxplot again for both of these two cetegories.
+
 ```{r, results=TRUE}
 
-library(ggplot2)
+casual_clean <- subset(casual_clean_1, !is.na(Total_Time))
+membership_clean <- subset(membership_clean_1, !is.na(Total_Time))
+
+
+ggplot(data=membership_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for Membership customer timing (Removed Outliers)')
+ggplot(data=membership_clean, aes(Total_Time)) + geom_boxplot (colour='orange', fill='blue', outlier.colour='red', outlier.size = 4)+labs(title='Boxplot for Membership customer timing (Removed Outliers)')
+
+ggplot(data=casual_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for Casual customer timing (Removed Outliers)')
+ggplot(data=casual_clean, aes(Total_Time)) + geom_boxplot (colour='orange', fill='blue', outlier.colour='red', outlier.size = 4)+labs(title='Boxplot for Casual customer timing (Removed Outliers)')
+
+```
+
+From above, we can clearly see that our distribution is approximately normal after removing the outliers (and all the nulls). Then, we'll use the distribution to check the propotion of customers whose riding time is more than the time boundaries (30 mins for casual_customers & 45 mins for member_customers)
+
+```{r, results=TRUE}
 
 print('The proportion of casual customers use more than 30mins are about：')
 pnorm(30, mean(casual_clean$Total_Time), sd(casual_clean$Total_Time),lower.tail=FALSE)
@@ -363,22 +374,30 @@ print('The proportion of member customers use more than 45mins are about：')
 pnorm(45, mean(membership_clean$Total_Time), sd(membership_clean$Total_Time),lower.tail=FALSE)
 
 ```
-According to the probability information, it seems like the casual customers are lessly care about the boundary price and will use much more time on members, if that's true, it means the company can increase their profit margin by slightly increasing the boundary price for casual members becasue casual customers may be more acceptable for the price incremental? 
-To further test this assumption about casual customer always use more time than member, we need to test if the average time for using shared bike are the same with T-Test.
-Firstly, we can use the averages in August to construct and compare two Confidence Interval, say the default confident level is 95%
+
+According to the probability information, it seems like the casual customers less care about the boundary price and will use much more time in comparison to the membership customers; 
+To further test our assumption that casual customer always use more time than member, we need to test if the average time for using shared bike are the same. Firstly, we can use the averages in August to construct and compare two Confidence Interval, say the default confident level is 95%, then, we'll make a null hypothesis that is "average time of member is less than average time of casual/difference between member average time and casual average time is less than zero" and test it with T-Test (because we want to test the average with only two categories, which are 'member' and 'casual')
+if our assumption is more reliable (or even true), we may suggest the company can increase their profit margin by slightly increasing the boundary price for casual customers because casual customers may be more acceptable for the price increment. 
 (Because for now the August data is our sample so we need to use the T-Test to construct CI)
+
 ```{r, results=TRUE}
 
-ttest1 <- t.test(membership_clean$Total_Time)
-ttest1$conf.int
-
+print('CI for Casual')
 ttest2 <- t.test(casual_clean$Total_Time)
 ttest2$conf.int
 
+print('')
+
+print('CI for Membership')
+ttest1 <- t.test(membership_clean$Total_Time)
+ttest1$conf.int
+
 ```
-According to the CI Information above, se can see there's no overlap between these two CIs. 
-Secondly, we can do a hypothesis testing between these 2 avearges. We set our null hypothesis H0: Two averages of total time are same, and just in case, we set our significance level as 5%.
+
+According to the CI Information above, se can see there's no overlap between these two CIs, and the interval for average time of casual customers are much larger than the interval for average time of member customers. 
+Secondly, we can do a hypothesis testing between these 2 averages. We set our null hypothesis H0: Two averages of total time are same, and just in case, we set our significance level as 5%.
 (for a wider range, let's say august data is just a sample, but the data for the whole year is the population) 
+
 ```{r, results=TRUE}
 
 ttest2sample_total_time <- t.test(casual_clean$Total_Time, membership_clean$Total_Time, mu=0, alternative = 'greater')
@@ -386,16 +405,15 @@ ttest2sample_total_time <- t.test(casual_clean$Total_Time, membership_clean$Tota
 ttest2sample_total_time
 
 ```
+
 According to the p-value for differences in total time between two types of customers is 2.2e-16, because our p-value is extremely small, so the data presented is enough evidence to reject null hypothesis H0, and we can’t say the average riding time of membership is less than or the same as average riding time of casual customers.
 
-### Classic Bike vs Electric Bike:
-Except subsetting the time based on membership type, we can also subset the time based on bike type
-```{r, results=TRUE}
-#calculating the time dieffence
-bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
-bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
 
-bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+
+### Classic Bike vs Electric Bike:
+Except subseting the time based on membership type, we can also subset the time based on bike types
+
+```{r, results=TRUE}
 
 classic_bike <- subset(bike, !is.na(Total_Time)&rideable_type=='classic_bike', select=c(rideable_type, Total_Time))
 
@@ -408,6 +426,9 @@ print('')
 print('electric_bike structure：')
 str(electric_bike)
 ```
+
+Then, we'll check their summary statistics for both of the subsets
+
 ```{r, results=TRUE}
 
 print('Summary Statistic for classic bike')
@@ -420,11 +441,11 @@ summary(electric_bike$Total_Time)
 sd(electric_bike$Total_Time)
 
 ```
-Recall the time boundary is 30mins for extra price.
-We can see that there's about less than 25% of people using more than 28mins for classic bike and more than 22 mins for electric bike, but these information was not enough, especially we haven't seen the probability for using more than the time boundary (30 minutes), so we need to check the distribution of these two data for more detailed information.
-However, same as above, we saw the St.Deviation and variation is huge, this is another reason we want to look at the distribution for both classic bike and electric bike data to check if there's huge amount of outliers：
-```{r, results=TRUE}
 
+Recall the time boundary is 30-mins (for casual customers) and 45-mins (for member customers) for extra price, then, same logic：
+We can see that there's about less than 25% of people using more than 28mins for classic bike and more than 22 mins for electric bike, but these information was not enough, we want to know the information about proportion related with the time boundaries, so that we can which type of bike is more in favor and make some recommendations about the bike storage plan for the company, so then we need to check the distribution of these two data for more detailed information.
+
+```{r, results=TRUE}
 
 ggplot(data=classic_bike, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for classic bike using time')
 qqnorm(classic_bike$Total_Time, main='qqplot for time of using classic bike', col='red')
@@ -435,79 +456,94 @@ qqnorm(electric_bike$Total_Time, main='qqplot for time of using electric bike', 
 qqline(electric_bike$Total_Time, col='blue')
 
 ```
-We can see that both the data are highly right-skwed, which meanns there are some few extremely large outliers in the data, so we'll exclude those outliers first
+
+We can see that both the data are highly right-skewed, which means there are some few extremely large outliers in the data, so we'll exclude those outliers first
+
 ```{r, results=TRUE}
 
-classic_bike_clean <- outlierKD2 (classic_bike, Total_Time, qqplt = TRUE)
-sd(classic_bike_clean$Total_Time)
+classic_clean_1 <- ezids::outlierKD2 (classic_bike, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+summary(classic_clean_1$Total_Time)
 
-electric_bike_clean <- outlierKD2 (electric_bike, Total_Time, qqplt = TRUE)
-sd(electric_bike_clean$Total_Time)
 
-```
-After the data was cleaned, we can see our data is approximately normal, then we'll find the probability of the time boundary 
-1). 30 mins (Time boundary for casuals)：
-```{r, results=TRUE}
-
-print('The proportion of using classic bike more than 30mins is about：')
-pnorm(30, mean(classic_bike_clean$Total_Time), sd(classic_bike_clean$Total_Time),lower.tail=FALSE)
-print('')
-print('')
-print('The proportion of using electric bike more than 30mins is about：')
-pnorm(30, mean(electric_bike_clean$Total_Time), sd(electric_bike_clean$Total_Time),lower.tail=FALSE)
+electric_clean_1 <- ezids::outlierKD2 (electric_bike, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+summary(electric_clean_1$Total_Time)
 
 ```
-2). 45 mins (Time boundary for members)：
+
+After the outliers was removed, we clear the null values again
+
 ```{r, results=TRUE}
 
 library(ggplot2)
 
+classic_clean <- subset(classic_clean_1, !is.na(Total_Time))
+electric_clean <- subset(electric_clean_1, !is.na(Total_Time))
+
+```
+
+For clear visual, we create the charts for both categories again. 
+
+```{r, results=TRUE}
+
+ggplot(data=classic_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for Classic bike time (Removed Outliers)')
+ggplot(data=classic_clean, aes(Total_Time)) + geom_boxplot (colour='orange', fill='blue', outlier.colour='red', outlier.size = 4)+labs(title='Boxplot for Classic bike time (Removed Outliers)')
+
+ggplot(data=electric_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for Electric bike time (Removed Outliers)')
+ggplot(data=electric_clean, aes(Total_Time)) + geom_boxplot (colour='orange', fill='blue', outlier.colour='red', outlier.size = 4)+labs(title='Boxplot for Electric bike time (Removed Outliers)')
+
+```
+
+Then, we can see our data is approximately normal, then we'll find the probability of the time boundary 
+1). 30 mins (Time boundary for casuals)：
+
+```{r, results=TRUE}
+
+print('The proportion of using classic bike more than 30mins is about：')
+pnorm(30, mean(classic_clean$Total_Time), sd(classic_clean$Total_Time),lower.tail=FALSE)
+print('')
+print('')
+print('The proportion of using electric bike more than 30mins is about：')
+pnorm(30, mean(electric_clean$Total_Time), sd(electric_clean$Total_Time),lower.tail=FALSE)
+
+```
+
+2). 45 mins (Time boundary for members)：
+
+```{r, results=TRUE}
+
 print('The proportion of using classic bike more than 45mins is about：')
-pnorm(45, mean(classic_bike_clean$Total_Time), sd(classic_bike_clean$Total_Time),lower.tail=FALSE)
+pnorm(45, mean(classic_clean$Total_Time), sd(classic_clean$Total_Time),lower.tail=FALSE)
 print('')
 print('')
 print('The proportion of using electric bike more than 45mins is about：')
-pnorm(45, mean(electric_bike_clean$Total_Time), sd(electric_bike_clean$Total_Time),lower.tail=FALSE)
+pnorm(45, mean(electric_clean$Total_Time), sd(electric_clean$Total_Time),lower.tail=FALSE)
 
 ```
-According to the probability for both boundaries, we can see that no matter what time boundary is, more than 30 or 45 minutes, the proportion of using classic bike is always more than the proportion of using electric bike. However, we need to test its reliability so that we can have more confidence to recommend the company to adjust their bike storing plan next year (so now suppose August data is just one sample, and the true population is the data from every year). 
-We will construct the Confidence Interval and do the T-Test for comparing these two averages
-```{r, results=TRUE}
 
-ttest3 <- t.test(classic_bike_clean$Total_Time)
+According to the probability for both boundaries, we can see that no matter what time boundary is, more than 30 or 45 minutes, the proportion of using classic bike is always more than the proportion of using electric bike. However, we need to test its reliability so that we can have more confidence to recommend the company to adjust their bike storing plan next year 
+(so now suppose August data is just one sample, and the true population is the data from every year). 
+We will construct the Confidence Interval and do the T-Test for comparing these two averages
+
+```{r, results=TRUE}
+print('CI for Classic bike time')
+ttest3 <- t.test(classic_clean$Total_Time)
 ttest3$conf.int
 
-ttest4 <- t.test(electric_bike_clean$Total_Time)
+print('')
+
+print('CI for Electric bike time')
+ttest4 <- t.test(electric_clean$Total_Time)
 ttest4$conf.int
 
 ```
+
 According to the results above, we can see that there's no overlap between classic-bike's CI and electric-bike's CI. 
+
 ```{r, results=TRUE}
 
-ttest2sample_total_time_2 <- t.test(classic_bike_clean$Total_Time, electric_bike_clean$Total_Time, mu=0, alternative = 'greater' )
+ttest2sample_total_time_2 <- t.test(classic_clean$Total_Time, electric_clean$Total_Time, mu=0, alternative = 'greater' )
 ttest2sample_total_time_2
 
 ```
-According to the p-value for differences in total using time between two types of bikes is 2.182e-10, because our p-value is extremely small, so the data presented is enough evidence to reject null hypothesis H0, and we can’t say two types of bikes always have the same riding time or the classic_bike time is less than electric bike.
-(According to this we can recommend next year to add more classic bike, but not quite sure about the electric bike, but this is just the result of EDA and hypothesis testing.)
 
-
-
-
-
-(But the time of usage may differ between different members, and different bike, we'll subset it into different groups and find which groups has the highest usage of time (so we can certify our target customers or target production of bike). 
-However, we can see the longest time of usage is about 1499 minutes, which is so far away from the mean and median, and we'll try to analyze that out when we subset it into groups and analyze it in details.) 
-
-All the questions for numeric variable：
-1). What's the total mean of using time for both users (based on users)? (To see if we should adjust the price-plan for different customers) 
-
-2). If we subset to two types of users (with their histogram and boxplots) what's the mean and variance (variation) for two types of users?
-
-3). What's distribution of time_using (what is outliers？If have, then exclude the outliers)
-
-4). Some testings about these two types of users (Use this month (August)'s avearge estimated , even though the month is fixed, but the customers are randomed, for the previous/all months' average for these two groups & Does two members have the same average time?)
-
-5). Then do it again for two types of bike (subset two bikes) (To analyze which bike we should add more)
-
-5). Price correlation with all other members. 
-
+According to the p-value for differences in total using time between two types of bikes is 2.2e-10, because our p-value is extremely small, so the data presented is enough evidence to reject null hypothesis H0, and we can’t say two types of bikes always have the same riding time or the classic_bike time is less than electric bike.
