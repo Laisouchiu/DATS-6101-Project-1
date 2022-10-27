@@ -26,7 +26,7 @@ library(ezids)
 ```{r setup, include=FALSE}
 
 getwd()
-bike <- data.frame(read.csv("Bike_Share_Data.csv"))
+bike <- data.frame(read.csv("bo.csv"))
 
 ```
 
@@ -85,12 +85,14 @@ bike$member_casual <- factor(bike$member_casual)
 
 # split started_at/ ended_at to date column and time column
 # change start_date/end_date to date type
-bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M:%S") 
-bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M:%S") 
+bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M") 
+bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M") 
 bike$start_date <- as.Date(bike$started_at)
 bike$end_date <- as.Date(bike$ended_at)
 
 # Check the structure again
+bike$start_date
+bike$started_at
 str(bike)
 ```
 
@@ -389,6 +391,11 @@ According to the p-value for differences in total time between two types of cust
 ### Classic Bike vs Electric Bike:
 Except subsetting the time based on membership type, we can also subset the time based on bike type
 ```{r, results=TRUE}
+#calculating the time dieffence
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
+
+bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
 
 classic_bike <- subset(bike, !is.na(Total_Time)&rideable_type=='classic_bike', select=c(rideable_type, Total_Time))
 
@@ -418,7 +425,6 @@ We can see that there's about less than 25% of people using more than 28mins for
 However, same as above, we saw the St.Deviation and variation is huge, this is another reason we want to look at the distribution for both classic bike and electric bike data to check if there's huge amount of outliers：
 ```{r, results=TRUE}
 
-library(ggplot2)
 
 ggplot(data=classic_bike, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for classic bike using time')
 qqnorm(classic_bike$Total_Time, main='qqplot for time of using classic bike', col='red')
@@ -432,20 +438,16 @@ qqline(electric_bike$Total_Time, col='blue')
 We can see that both the data are highly right-skwed, which meanns there are some few extremely large outliers in the data, so we'll exclude those outliers first
 ```{r, results=TRUE}
 
-library(ggplot2)
-
-classic_bike_clean <- ezids::outlierKD2 (classic_bike, Total_Time, qqplt = TRUE)
+classic_bike_clean <- outlierKD2 (classic_bike, Total_Time, qqplt = TRUE)
 sd(classic_bike_clean$Total_Time)
 
-electric_bike_clean <- ezids::outlierKD2 (electric_bike, Total_Time, qqplt = TRUE)
+electric_bike_clean <- outlierKD2 (electric_bike, Total_Time, qqplt = TRUE)
 sd(electric_bike_clean$Total_Time)
 
 ```
 After the data was cleaned, we can see our data is approximately normal, then we'll find the probability of the time boundary 
 1). 30 mins (Time boundary for casuals)：
 ```{r, results=TRUE}
-
-library(ggplot2)
 
 print('The proportion of using classic bike more than 30mins is about：')
 pnorm(30, mean(classic_bike_clean$Total_Time), sd(classic_bike_clean$Total_Time),lower.tail=FALSE)
