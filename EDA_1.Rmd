@@ -67,7 +67,7 @@ str(bike)
 # Data analysis & visualazation
 ### How many users of each membership type we have?
 ```{r, results='markup'}
-nember_members<- bike %>% count(member_casual)
+bike %>% count(member_casual)
 ggplot(bike, aes(member_casual, fill = member_casual))+
   geom_bar()+
   scale_fill_brewer(palette = "BuPu")+
@@ -113,17 +113,9 @@ While there is no huge difference between *annual* members in choosing `classic`
 #the probability of each user to pick this type of bike
 rieds = table(bike$member_casual, bike$rideable_type)
 xkabledply(round(rieds,2), title="Contingency table for bike type vs User membership")
-
-### Expected frequencies $\chi^2$ test of customer type and bike type
-#the probability of each user to pick this type of bike
-rieds = table(bike$member_casual, bike$rideable_type)
-xkabledply(round(rieds,2), title="Contingency table for bike type vs User membership")
-chigoodness <- chisq.test(rieds)
-xkabledply( as.table(chigoodness$expected), title = "Expected frequencies", wide = T)
 ```
 
-While there is almost even number of the *annual member* choose `electric` or `classic` bike,*casual users* are more likely to choose `electric` bike. While there is almost even number of the *annual member* choose `electric` or `classic` bike,*casual users* are more likely to choose `electric` bike.  The p-value from `chigoodness$p.value` = `r chigoodness$p.value`. The degree of freedom is given by `chigoodness$parameter` = `r chigoodness$parameter`.
-
+While there is almost even number of the *annual member* choose `electric` or `classic` bike,*casual users* are more likely to choose `electric` bike. 
 ```{r}
 #I think I can do chi-square in here
 chisq.test(rieds)
@@ -161,7 +153,6 @@ ggplot(sum_hour, aes(hour, sum_hour ))+
   scale_x_continuous(breaks=seq(0,23,1))+
   labs(title="Use by hour", y = "")+
   theme_classic()
-sum_hour
 
 ```
 
@@ -219,25 +210,6 @@ print(bikemap2)
 ```
 
 For both start and end destination there is more users in the middle of the map (250 customers) than moving away from the center (less than 250 customers). In addition, customers start their trips at the center of while it is more scattered in the end station. So at the beginning of each day we must make sure that there are enough bikes in the center ready for customers. Also, for both end and start trips 
-
-```{r}
-bike_1 <- subset(bike, !is.na(start_station_id)) 
-bike_final <- subset(bike_1, !is.na(end_station_id))
-group_location1 <- bike_final%>% 
-                  group_by(start_station_name)%>% 
-                  summarise(count = n())%>%
-                  arrange(desc(count))%>%
-                  slice(1:5)
-group_location2 <- bike_final%>% 
-                  group_by(end_station_name)%>% 
-                  summarise(count = n())%>%
-                  arrange(desc(count))%>%
-                  slice(1:5)
-xkabledply(group_location1 , title = "Top 5 start locations") 
-xkabledply(group_location2 , title = "Top 5 end locations") 
-
-```
-
 
 ```{r}
 #Load modified data with the pricing and distance
@@ -320,6 +292,11 @@ bike$time_diff <- difftime(bike$enddat, bike$Startedat, units = "mins")
 **probopality of user membership and distance time**
 ```{r}
 bike$start_time
+#calculating the time dieffence
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
+
+bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
 #y1 = contenuse, y2 = binary
 #t.test(dis_time ~ member_casual, var.equal = FALSE)
 
