@@ -6,11 +6,27 @@ date: "2022-11-06"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(purrr)#to join all files
+```
+
+
+#joining four months in one sheet
+```{r}
+#bind all the files in this path together
+file.list <- list.files(pattern='*.csv')
+
+# need an id-column with the file-names
+file.list <- setNames(file.list, file.list)
+
+#want only sheet 4, skip 1 row and name id column month
+bike <-map_df(file.list, function(x) read.csv(x))
+
+str(bike)
 ```
 
 #Preparing columns for modeling
 ```{r}
-bike <- data.frame(read.csv("bo.csv"))
+#bike <- data.frame(read.csv("bo.csv"))
 bike$rideable_type <- factor(bike$rideable_type)
 bike$member_casual <- factor(bike$member_casual)
 # split started_at/ ended_at to date column and time column
@@ -24,8 +40,15 @@ bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
 bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
 #take the day to another column and delete the year and month
 ```
+## need to check for codes for times and days being rounded not bigger or lower
 
-###Drop non-needed columns
+```{r}
+
+
+```
+
+
+##Drop non-needed columns
 ```{r}
 drop <- c('Startedat','enddat','started_at','ended_at', 'start_station_name', 'end_station_name', 'start_lat', 'end_lat', 'start_lng','end_lng')
 df <- bike[,!(names(bike) %in% drop)]
@@ -62,4 +85,7 @@ chisq.test(agesurvive4)
 
 Again low p-value
 
-## need to check for codes for times and days being rounded not bigger or lower
+```{r}
+admitLogit <- glm(member_casual ~ end_station_id+start_station_id+Total_Time+rideable_type, data = df, family = "binomial")
+summary(admitLogit)
+```
