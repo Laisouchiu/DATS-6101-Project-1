@@ -1,0 +1,66 @@
+---
+title: "EDS"
+output: html_document
+date: "2022-11-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+bike <- data.frame(read.csv("bo.csv"))
+bike$rideable_type <- factor(bike$rideable_type)
+bike$member_casual <- factor(bike$member_casual)
+
+# split started_at/ ended_at to date column and time column
+# change start_date/end_date to date type
+bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M") 
+bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M") 
+bike$start_date <- as.Date(bike$started_at)
+bike$end_date <- as.Date(bike$ended_at)
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
+
+bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+
+drop <- c('Startedat','enddat','started_at','ended_at', 'start_station_name', 'end_station_name', 'start_lat', 'end_lat', 'start_lng','end_lng')
+df <- bike[,!(names(bike) %in% drop)]
+
+```
+
+
+
+```{r}
+#find the most influnsing factors
+agesurvive = xtabs(~ member_casual + rideable_type, data = df)
+chisq.test(agesurvive)
+```
+
+they are dependent factors
+
+```{r}
+#find the most influnsing factors
+agesurvive2 = xtabs(~ member_casual + Total_Time, data = df)
+chisq.test(agesurvive2)
+```
+
+This is better
+
+```{r}
+#find the most influnsing factors
+agesurvive3 = xtabs(~ member_casual + start_station_id , data = df)
+chisq.test(agesurvive3)
+```
+
+Intersetingly very low p-value
+
+```{r}
+#find the most influnsing factors
+agesurvive4 = xtabs(~ member_casual + end_station_id , data = df)
+chisq.test(agesurvive4)
+```
+
+Again low p-value
+
+## need to check for codes for times and days being rounded not bigger or lower
