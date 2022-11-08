@@ -10,6 +10,8 @@ library(purrr)#to join all files
 library(lubridate)# for duration of time
 library(ModelMetrics)
 library(pROC)
+library(dplyr)
+library(tidyr)
 ```
 
 
@@ -41,7 +43,9 @@ bike$end_date <- as.Date(bike$ended_at)
 bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
 bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
 bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+bike$days <- format(bike$start_date, format = "%a")
 #take the day to another column and delete the year and month
+# make a plot to check if there is relationship between the days and the number of casual or members
 
 ```
 # need to check for codes for times and days being rounded not bigger or lower
@@ -52,13 +56,15 @@ bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units 
 res <- hm(bike$start_time)# format to 'hours:minutes'
 bike$startingm <- hour(res)*60 + minute(res)
 
+#one hot incoding of days
+bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
 ```
 
 
 ##Drop non-needed columns
 ```{r}
 #selecting the columns we want
-want <- c('member_casual', 'rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','rideable_type')
+want <- c('member_casual', 'rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','rideable_type', 'Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
 
 df2 <- bike[,(names(bike) %in% want)]
 #Delete the na 
@@ -103,7 +109,7 @@ chisq.test(agesurvive5)
 dependent due to low p-value
 
 ```{r}
-customerLogit <- glm(member_casual ~ end_station_id+start_station_id+Total_Time+rideable_type+ startingm, data = df, family = "binomial")
+customerLogit <- glm(member_casual ~ end_station_id+start_station_id+Total_Time+rideable_type+ startingm+Fri+Mon+Sat+Sun+Thu+Tue+Wed, data = df, family = "binomial")
 summary(customerLogit)
 ```
 
@@ -118,6 +124,7 @@ plot(e)
 
 ```{r,results='markup'}
 confusionMatrix(actual=customerLogit$y,predicted=customerLogit$fitted.values)
+#make a graph to see how many members and casuales you have. 
 ```
 
 This model can predict casuals but not members! the probability to predict the annuals is almost %50. I beleive because there are more casuals in the data set than the annuals.
