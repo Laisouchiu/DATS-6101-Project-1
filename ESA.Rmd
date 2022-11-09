@@ -7,6 +7,11 @@ date: "2022-11-06"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(purrr)#to join all files
+library(lubridate)# for duration of time
+library(ModelMetrics)
+library(pROC)
+library(dplyr)
+library(tidyr)
 ```
 
 
@@ -38,21 +43,33 @@ bike$end_date <- as.Date(bike$ended_at)
 bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
 bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
 bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+bike$days <- format(bike$start_date, format = "%a")
 #take the day to another column and delete the year and month
+# make a plot to check if there is relationship between the days and the number of casual or members
+
 ```
-## need to check for codes for times and days being rounded not bigger or lower
+# need to check for codes for times and days being rounded not bigger or lower
+
+#make the time as a duration of mints
 
 ```{r}
+res <- hm(bike$start_time)# format to 'hours:minutes'
+bike$startingm <- hour(res)*60 + minute(res)
 
-
+#one hot incoding of days
+bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
 ```
 
 
 ##Drop non-needed columns
 ```{r}
-drop <- c('Startedat','enddat','started_at','ended_at', 'start_station_name', 'end_station_name', 'start_lat', 'end_lat', 'start_lng','end_lng')
-df <- bike[,!(names(bike) %in% drop)]
+#selecting the columns we want
+want <- c('member_casual', 'rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','rideable_type', 'Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
 
+df2 <- bike[,(names(bike) %in% want)]
+#Delete the na 
+
+df<-na.omit(df2)
 ```
 
 
@@ -69,7 +86,7 @@ agesurvive2 = xtabs(~ member_casual + Total_Time, data = df)
 chisq.test(agesurvive2)
 ```
 
-This is better
+dependent due to low p-value
 
 ```{r}
 agesurvive3 = xtabs(~ member_casual + start_station_id , data = df)
@@ -83,9 +100,31 @@ agesurvive4 = xtabs(~ member_casual + end_station_id , data = df)
 chisq.test(agesurvive4)
 ```
 
-Again low p-value
+dependent due to low p-value
 
 ```{r}
-admitLogit <- glm(member_casual ~ end_station_id+start_station_id+Total_Time+rideable_type, data = df, family = "binomial")
-summary(admitLogit)
+agesurvive5 = xtabs(~ member_casual + startingm , data = df)
+chisq.test(agesurvive5)
 ```
+dependent due to low p-value
+
+```{r}
+customerLogit <- glm(member_casual ~ end_station_id+start_station_id+Total_Time+rideable_type+ startingm:(Fri+Mon+Sat+Sun+Thu+Tue+Wed), data = df, family = "binomial")
+summary(customerLogit)
+```
+
+###Checking the AUC
+```{r,results='markup'}
+prob=predict(customerLogit, type = "response" )
+df$prob=prob
+e <- roc(member_casual~prob, data=df)
+auc(e) # area-under-curve 
+plot(e)
+```
+
+```{r,results='markup'}
+confusionMatrix(actual=customerLogit$y,predicted=customerLogit$fitted.values)
+#make a graph to see how many members and casuales you have. 
+```
+
+This model can predict casuals but not members! the probability to predict the annuals is almost %50. I beleive because there are more casuals in the data set than the annuals.
