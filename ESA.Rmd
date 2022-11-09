@@ -109,7 +109,7 @@ chisq.test(agesurvive5)
 dependent due to low p-value
 
 ```{r}
-customerLogit <- glm(member_casual ~ end_station_id+start_station_id+Total_Time+rideable_type+ startingm+Fri+Mon+Sat+Sun+Thu+Tue+Wed, data = df, family = "binomial")
+customerLogit <- glm(member_casual ~ end_station_id+start_station_id+Total_Time+rideable_type+ startingm:(Fri+Mon+Sat+Sun+Thu+Tue+Wed), data = df, family = "binomial")
 summary(customerLogit)
 ```
 
