@@ -64,7 +64,7 @@ bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
 ##Drop non-needed columns
 ```{r}
 #selecting the columns we want
-want <- c('member_casual', 'rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','rideable_type', 'Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
+want <- c('member_casual', 'rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
 
 df2 <- bike[,(names(bike) %in% want)]
 #Delete the na 
@@ -72,6 +72,15 @@ df2 <- bike[,(names(bike) %in% want)]
 df<-na.omit(df2)
 ```
 
+##carrolation metrix
+```{r}
+library(corrplot)
+corrplot(chisq$residuals, is.cor = FALSE)
+#the columns should be only member and casual 
+#the rows should be the columns names and the number of casual or member of each
+#do group by each column we are using
+
+```
 
 #find the most influnsing factors
 ```{r}
