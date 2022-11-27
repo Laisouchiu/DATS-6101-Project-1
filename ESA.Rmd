@@ -12,6 +12,7 @@ library(ModelMetrics)
 library(pROC)
 library(dplyr)
 library(tidyr)
+library(caret)
 ```
 
 
@@ -32,8 +33,10 @@ str(bike)
 #Preparing columns for modeling
 ```{r}
 #bike <- data.frame(read.csv("bo.csv"))
-bike$rideable_type <- factor(bike$rideable_type)
-bike$member_casual <- factor(bike$member_casual)
+bike$rideable_type <- as.integer(factor(bike$rideable_type))
+bike$member_casual <- as.integer(factor(bike$member_casual))
+#make it to casual = 0, member= 1 
+bike$member_casual<-ifelse(bike$member_casual==1,1,0)
 # split started_at/ ended_at to date column and time column
 # change start_date/end_date to date type
 bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M") 
@@ -64,21 +67,22 @@ bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
 ##Drop non-needed columns
 ```{r}
 #selecting the columns we want
-want <- c('member_casual', 'rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
+want <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
 
 df2 <- bike[,(names(bike) %in% want)]
-#Delete the na 
 
+#Delete the na 
 df<-na.omit(df2)
+
+#make member_casual to be the first column
+colnames(df)
+df <- df %>%
+  select('member_casual', everything())
 ```
 
 ##carrolation metrix
 ```{r}
 library(corrplot)
-corrplot(chisq$residuals, is.cor = FALSE)
-#the columns should be only member and casual 
-#the rows should be the columns names and the number of casual or member of each
-#do group by each column we are using
 
 ```
 
@@ -117,23 +121,49 @@ chisq.test(agesurvive5)
 ```
 dependent due to low p-value
 
+# scale and devide the data
 ```{r}
-customerLogit <- glm(member_casual ~ end_station_id+start_station_id+Total_Time+rideable_type+ startingm:(Fri+Mon+Sat+Sun+Thu+Tue+Wed), data = df, family = "binomial")
+scaleddf <- as.data.frame(scale(df[2:13], center = TRUE, scale = TRUE))
+set.seed(321)
+df_sample <- sample(2, nrow(scaleddf), replace=TRUE, prob=c(0.75, 0.25))
+
+
+train_X <- scaleddf[df_sample==1, 1:12]
+test_X <- scaleddf[df_sample==2, 1:12]
+
+
+train_y <- df[df_sample==1, 1]
+test_y <- df[df_sample==2, 1]
+
+```
+
+
+# Logistic model
+```{r}
+#deleted start_station_id and Wed coz the model says it is not much predictable 
+customerLogit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ startingm*(Fri+Mon+Sat+Sun+Thu+Tue), data = train_X, family = "binomial")
 summary(customerLogit)
 ```
 
+# see 0.5 cut
+```{r}
+logitpredict.5 <- confupredict(customerLogit, newdata = test_X, type = "response") > 0.5
+crossTable = table(logitpredict.5,test_y)
+crossTable
+```
+
+Would it be possible to say that our one time customers that match the behaviors of annual customers are the false 1?
+
+###The accuracy of the model of 0.5 cutoff :
+```{r}
+format(100*(crossTable[1,1]+crossTable[2,2])/sum(crossTable), digits=4)
+```
 ###Checking the AUC
 ```{r,results='markup'}
-prob=predict(customerLogit, type = "response" )
-df$prob=prob
-e <- roc(member_casual~prob, data=df)
+prob=predict(customerLogit, type = "response")
+e <- roc(train_y~prob)
 auc(e) # area-under-curve 
 plot(e)
+
 ```
 
-```{r,results='markup'}
-confusionMatrix(actual=customerLogit$y,predicted=customerLogit$fitted.values)
-#make a graph to see how many members and casuales you have. 
-```
-
-This model can predict casuals but not members! the probability to predict the annuals is almost %50. I beleive because there are more casuals in the data set than the annuals.
