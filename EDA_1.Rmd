@@ -292,6 +292,11 @@ bike$time_diff <- difftime(bike$enddat, bike$Startedat, units = "mins")
 **probopality of user membership and distance time**
 ```{r}
 bike$start_time
+#calculating the time dieffence
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
+
+bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
 #y1 = contenuse, y2 = binary
 #t.test(dis_time ~ member_casual, var.equal = FALSE)
 

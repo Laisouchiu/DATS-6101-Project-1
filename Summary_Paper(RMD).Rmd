@@ -1,0 +1,578 @@
+---
+title: "EDA- CoGo Bike Share Data"
+author: "Team - 03"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: no
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  word_document:
+    toc: yes
+    toc_depth: '3'
+---
+```{r, include=FALSE}
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(RColorBrewer)
+library(lubridate)
+library(ezids)
+
+```
+
+# Why Bike sharing system?
+While this system has many benefits, it also presents operators with a number of challenges, such as the best way to estimate demand. The data contains multiple features to explore which helped us to learn about the business and how to use analytics for the same.
+
+#Prior research and analysis completed on this topic:
+We found several examples of bike sharing analytics performed by many organizations and students for their company work and class projects respectively. What we found interesting was that every analytics had something unique to it and we also got some clarity on how we can proceed further by reading similar analytics report. However, CoGo bike sharing data was unique and due to this we got some super interesting results which we couldn’t find in analytics we saw on internet.
+
+#Problem statement
+How can the CoGo bike-sharing company boost their profit margins by implementing particular adjustments, such as increasing or removing specific bike kinds, growing its business in a specific location, or lowering or raising the cost of bike share? 
+
+#Source of Dataset and observation
+```{r, results=TRUE}
+
+getwd()
+bike <- data.frame(read.csv("bo.csv"))
+
+```
+We found the data on CoGo website. They have made the CoGo's trip data available for public use. This data is provided according to the CoGo Data License Agreement.
+The dataset is real-time data with  `r length(bike)` columns and `r nrow(bike)` rows, and more than 7,000 observations covering August of 2022. It contains 10+ columns such as Rider ID, Bike type, Rented bike start time, Rented bike end time, Start station name, Start station ID, End station name, End station ID, Start station latitude, Start station longitude, End station latitude, End station longitude, Member Type
+We imported the dataset into R and below is the structure of it. 
+```{r setup, results=TRUE}
+
+str(bike)
+
+```
+
+#Features in the dataset
+Below are all the column names of the dataset
+```{r, results=TRUE}
+
+colnames(bike)
+
+```
+Rider ID- It is a unique ID for each ride (row item)
+Bike Type- There are 3 bike types defined in the data- Electric bike, Classic bike and docked bike
+Start Time and Date- This column provided the information of the start time of each ride
+Stop Time and Date- This column provided the information of the stop time of each ride
+Start Station Name- This column provided the information of the start station of each ride
+End Station Name- This column provided the information of the end station of each ride
+Station ID- Data has 2 Station ID column (Start and End station ID), this is a unique ID provided for each station 
+Station Lat/Long- Data has 4 Station Lat/Long column (Start and end station Lat/Long). This column contains the geographical information of each start and end station
+User Type- Data contains 2 types of users- Causal users and Annual membership users.
+
+# Limitation in the datasets:
+Although, the dataset is super interesting, but a few more columns could have help us further go deep into our analytics for example: price information- Price information is available on the CoGo website stating the price of the rides, but in the dataset price information for each ride was missing due to which we had to create a calculated column to do the analysis on price. There were few columns which are available for few months but are not available for all the months such as year of birth, gender etc.
+
+# SMART question:
+How can the CoGo bike-sharing company boost their profit margins by implementing particular adjustments, such as increasing or removing specific bike kinds, growing its business in a specific location, or lowering or raising the cost of bike share?
+We found a lot of analytics being performed on the bike sharing data on internet, but in all the analysis focus was just on the data. We also wanted to include the business perspective and wanted to see how this can finally help the company and hence we thought of the above-mentioned SMART question.
+
+# Data preparing
+### Dealing with NA values for the whole dataframe
+```{r, results='markup'}
+
+print(paste(sum(is.na(bike)), "Number of NA in the data"))
+sapply(bike, function(y) sum(length(which(is.na(y)))))
+
+```
+
+Most of NA are contained in the columns `start_station_id and` and `end_station_id`. However, since the name of the station is present we don't think we should delete the whole row! and for further investigation we subset the NA values to track any pattern.
+
+```{r, results=TRUE}
+
+bike_1 <- subset(bike, !is.na(start_station_id)) 
+bike_final <- subset(bike_1, !is.na(end_station_id))
+
+```
+
+Then, we checked if the data still have NA-Values in the data frame. 
+
+```{r, results=TRUE}
+
+print(paste(sum(is.na(bike_final)), "Number of NA in the data"))
+sapply(bike_final, function(y) sum(length(which(is.na(y)))))
+
+```
+
+### Change columns type  
+```{r, results=TRUE}
+# change rideable_type/ member_casual to factor 
+#there three numbers under the factor rideable_type needs to look into!
+bike$rideable_type <- factor(bike$rideable_type)
+bike$member_casual <- factor(bike$member_casual)
+
+# split started_at/ ended_at to date column and time column
+# change start_date/end_date to date type
+bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M") 
+bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M") 
+bike$start_date <- as.Date(bike$started_at)
+bike$end_date <- as.Date(bike$ended_at)
+
+# Check the structure again
+
+str(bike)
+```
+
+
+
+# Data analysis & visualazation
+
+### How many users of each membership type we have?
+```{r, results='markup'}
+
+bike %>% count(member_casual)
+ggplot(bike, aes(member_casual, fill = member_casual))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "User membersip types", x= "Types of memebership")+
+  theme_classic()
+
+
+```
+
+There are more `causal` users than `annual membership` users, which is 4069 - 3347 = **722** user difference on August 2022. The `causal` users **Single** trip cost 2.25\$ per 30min `annual` membership on the other hand cost 85$ a year.
+
+### What is the most frequent bike type used?
+```{r, results='markup'}
+
+bike %>% count(rideable_type)
+ggplot(bike, aes(rideable_type, fill = rideable_type))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "Types of used bikes", x = "")+
+  theme_classic()
+  
+```
+
+There are few users of docked bike type comparing to the others. Docked bike is a bicycles that can be borrowed or rented from an automated station or "docking stations". It is interesting why would people prefer other types above this type!
+
+### Casual vs Annual memeber bike preference
+```{r, results='markup'}
+# grouping types of users and counting their used bike type without counting docked_bike because it is only 3 users
+members_preferance <- bike %>% group_by(member_casual, rideable_type)%>%
+  filter(rideable_type != "docked_bike")%>%
+  summarise(used = n())
+print(members_preferance)
+ggplot(members_preferance, aes(x= member_casual,y = used , fill = rideable_type))+
+  geom_bar(position='dodge', stat='identity')+
+  scale_fill_brewer(palette = "BuPu")+
+  labs(title = "Most used bike type to user", x= "type of user", y="")+
+  theme_classic()
+```
+
+While there is no huge difference between annual members in choosing classic or electric bikes, Casual members choose to use electric bikes over the classic by around 680 user. 
+
+
+### Comparison of users by week.
+```{r, results='markup'}
+
+#extrat only the day and convert it to day of the week
+bike$days <- format(bike$start_date, format = "%a")
+#convert it to a factor and organize the days order
+bike$days <- factor(bike$days, levels = c("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri" ))
+
+week_count <- bike %>% group_by(days)%>%
+  summarise(used = n())
+print(week_count)
+
+ggplot(bike, aes(days, fill = days))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "Number of users in the days of the week", x="Days of the week")+
+  theme_classic()
+
+```
+
+Saturdays and Wednesdays have the most number of users and Sunday has least.
+
+### When is the highest-lowest time of use of the day?
+```{r, results='markup'}
+#get only the hour from the time
+bike$hour <- NA 
+bike$hour <- hour(bike$started_at)
+sum_hour <- bike %>%
+            group_by(hour) %>%
+            summarise(sum_hour = length(hour)) 
+
+ggplot(sum_hour, aes(hour, sum_hour ))+
+  geom_line(color = "#8C6BB1", size = 1) +
+  geom_point(color = "#8C96C6", size = 2) +
+  scale_x_continuous(breaks=seq(0,23,1))+
+  labs(title="Use by hour", y = "")+
+  theme_classic()
+
+```
+
+The peak hours of August is between 3:00pm to 7:30pm with above 400 user. 
+
+### What is the hourly use of each day?
+```{r, results='markup'}
+
+sum_hour <- bike %>%
+            group_by(days, hour)%>% summarise(count = n())
+
+ggplot(data = sum_hour, aes(x = hour, y = count,  color = days))+
+  geom_point() + geom_line(aes(group = 1))+
+  facet_grid(rows = vars(days))+         
+  scale_color_manual(values=c("#BFD3E6", "#9EBCDA" ,"#8C96C6" ,"#8C6BB1", "#88419D", "#810F7C", "#4D004B"))+
+  labs(title= "Use by day and hour")+
+  scale_y_continuous(breaks=seq(0,130,50))+ 
+  scale_x_continuous(breaks=seq(0,23,1))+
+    theme(
+    plot.background = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank()
+  )  
+
+```
+
+During the *weekend* hours, the rush hour start at 9:00am while in the *weekdays* it starts earlier at 6:00am. Also, in most of the *weekdays* the line does not drop until 9:00pm but it drop a little earlier during the *weekends* at 8:00pm.
+
+### Where are the most used stations
+
+```{r, results='markup'}
+#subset without the na 
+#end_station <- subset(bike, (!is.na(bike[,11])) & (!is.na(bike[,12])))
+
+#library(ggmap)
+#register_google(key = "AIzaSyCiP5q1s10qu7c--t2lDzDsOAoQc-s7Rjs")
+#end station
+#bikemap <-ggmap(get_googlemap(center = c(lon = -82.99879, lat=	39.96118),
+#                    maptype = 'terrain',
+#                    color = "color",
+#                    zoom = 11))
+
+#bikemap1 <- bikemap + stat_bin2d(data = end_station, aes(x =end_lng, y = end_lat, size = end_station_id, color =end_station_id), alpha = 0.7)+labs(title = "End Stations")+scale_fill_gradient(low = "blue", high = "red", name ="user") 
+
+
+#start stations
+
+#bikemap2 <- bikemap + stat_bin2d(data = bike, aes(x =start_lng, y = start_lat, size = start_station_id, color =start_station_id), alpha =0.7)+labs(title = "Start Stations")+scale_fill_gradient(low = "blue", high = "red", name = "user")
+
+#print(bikemap1)
+#print(bikemap2)
+```
+
+For both start and end destination there is more users in the middle of the map (250 customers) than moving away from the center (less than 250 customers). In addition, customers start their trips at the center of while it is more scattered in the end station. So at the beginning of each day we must make sure that there are enough bikes in the center ready for customers. Also, for both end and start trips 
+
+
+```{r}
+bike_1 <- subset(bike, !is.na(start_station_id)) 
+bike_final <- subset(bike_1, !is.na(end_station_id))
+group_location1 <- bike_final%>% 
+                  group_by(start_station_name)%>% 
+                  summarise(count = n())%>%
+                  arrange(desc(count))%>%
+                  slice(1:5)
+group_location2 <- bike_final%>% 
+                  group_by(end_station_name)%>% 
+                  summarise(count = n())%>%
+                  arrange(desc(count))%>%
+                  slice(1:5)
+xkabledply(group_location1 , title = "Top 5 start locations") 
+xkabledply(group_location2 , title = "Top 5 end locations") 
+
+```
+For both the start and the end destination of the bike trip, there are more users in the middle of the map of Columbus, Ohio by above 1000 users than moving away from the center with less than 1000 users. Also, the top five stations users start their trips at are the same top five end stations which are Bicentennial Park, North Bank Park, High St & Broad St, Scioto Audubon Center, and High St & Warren.
+
+
+# Summary of Statistics & Testing：
+
+### Summary Statistics 
+After the graphing section, we saw some basic information about all the customers using shared bike, like what's there favorite location to pick up, and what time is the peak, but we still want to dig inside more and get some detailed statistics results to find if there's some interesting insights about pricing that can help to increase the company's profit margin, which is our purpose of this project. 
+Unlike some shared bike companies charged price with distance, COGO charge price based on the customers' riding timing, in other words, riding time determines the price. Thus, we believe if we can find some 'pattern' about customer's riding time, then we may find some useful suggestions for the company's pricing strategy.  
+However, in our original dataset, there is no such a column for the total riding time of each customers, but we have the columns for starting time and ending time, so we decided to use these two columns to create a new column for the customers' total riding time by calculating the differences between each customers' starting and ending time.  
+```{r, results=TRUE}
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
+
+bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+bike_time <- subset(bike, !is.na(Total_Time), select=Total_Time)
+
+
+```
+First of all, we can overview the summary statistic of all the customers' riding time.
+```{r, results=TRUE}
+
+summary(bike_time)
+
+```
+According to the time statistics we can see that, overall, nearly 25% of customers use less than 7-minutes, nearly 50% of customers use less than 13-minutes, and nearly 75% of all customers use less than 25 minutes;
+However, we don't know anything about the proportion about the time boundary and we could not figure out how many users are riding the bike for more than 30 mins or 45 mins, so we further drilled down our analytics.
+We know that the price for casual users increase after 30 mins and for annual members it increases after 45 mins, so we divided our data into different groups based on column members_casual to do the analysis in detailed first；
+Besides, from the summary statistic we see that the max value of this variable is 1499, which looks totally in-normal for riding time, thus, we want to see which group it is located at and also try to find if there are more extreme values like this and judge if that's just an occasional case, so that we can decide if we should clean the outliers or not.  
+
+### Membership vs Casual Customer:
+We subset the customer's riding time variable by member_casual categories. 
+```{r, results=TRUE}
+
+membership <- subset(bike, !is.na(Total_Time)&member_casual=='member', select=c(member_casual, Total_Time))
+casual <- subset(bike, !is.na(Total_Time)&member_casual=='casual', select=c(member_casual, Total_Time))
+
+print('Member_customers structure')
+str(membership)
+print('Casual_customers structure')
+str(casual)
+```
+
+We check the basic summary statistics for these two subsets：
+
+```{r, results=TRUE}
+
+print('Summary Statistic for Members')
+summary(membership$Total_Time)
+sd(membership$Total_Time)
+
+print('Summary Statistic for Casual')
+summary(casual$Total_Time)
+sd(casual$Total_Time)
+
+```
+
+Even though we subset the variable, we still can't see a clear information about the time boundary from any of these subsets (30 minutes and 45 minutes for member customers), moreover, the max value for each group are extreme large, so we decided to check their data distribution of each subset and looking for the proportion of these two types of customers who are using more time than the time boundary, and then decide if we can do some price adjustment plan
+
+```{r, results=TRUE}
+
+ggplot(data=membership, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for membership customer timing')
+qqnorm(membership$Total_Time, main='qqplot for membership timing', col='red')
+qqline(membership$Total_Time, col='blue')
+
+ggplot(data=casual, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for casual customer timing')
+qqnorm(casual$Total_Time, main='qqplot for casual timing', col='red')
+qqline(casual$Total_Time, col='blue')
+```
+
+From the histogram of two types of customers we can see that, both of the distribution are extremely right-skewed, but we can see that there's not so much data distributed in the extreme right tail (we can also see that in the QQ-Plot because most of data are lying on the qqline, which are normally distributed), so we may say the extreme max values are happens occasionally and we will consider them as outliers. 
+In case the outliers will affect the accuracy of our results later, we will check the probability above the time boundary after we remove all the outliers from these two subsets and build a new distribution. 
+
+```{r, results=TRUE}
+
+membership_clean_1 <- outlierKD2 (membership, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+print('Summary Statistic for cleaned membership time')
+summary(membership_clean_1)
+
+casual_clean_1 <- outlierKD2 (casual, Total_Time, rm=T, boxplt=TRUE, qqplt = TRUE)
+print('Summary Statistic for cleaned casual time')
+summary(casual_clean_1)
+
+```
+
+Above we cleaned the outliers and replaced it with null values; to see the charts more clear, we removed the null values and created histogram and boxplot again for both of these two cetegories.
+
+```{r, results=TRUE}
+
+casual_clean <- subset(casual_clean_1, !is.na(Total_Time))
+membership_clean <- subset(membership_clean_1, !is.na(Total_Time))
+
+
+ggplot(data=membership_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for Membership customer timing (Removed Outliers)')
+ggplot(data=membership_clean, aes(Total_Time)) + geom_boxplot (colour='orange', fill='blue', outlier.colour='red', outlier.size = 4)+labs(title='Boxplot for Membership customer timing (Removed Outliers)')
+
+ggplot(data=casual_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for Casual customer timing (Removed Outliers)')
+ggplot(data=casual_clean, aes(Total_Time)) + geom_boxplot (colour='orange', fill='blue', outlier.colour='red', outlier.size = 4)+labs(title='Boxplot for Casual customer timing (Removed Outliers)')
+
+```
+
+From above, we can clearly see that our distribution is approximately normal after removing the outliers (and all the nulls). Then, we can use this cleaned distribution to check the proportion of customers whose riding time is more than the time boundaries
+
+```{r, results=TRUE}
+
+print('The proportion of casual customers use more than 30mins are about：')
+pnorm(30, mean(casual_clean$Total_Time), sd(casual_clean$Total_Time),lower.tail=FALSE)
+
+
+print('The proportion of member customers use more than 45mins are about：')
+pnorm(45, mean(membership_clean$Total_Time), sd(membership_clean$Total_Time),lower.tail=FALSE)
+
+```
+
+According to the probability information above, the proportion of casual customers using more than the boundary time is much more than membership customers, so we made an assumption that the casual customers are less care about the boundary price and will use much more time in comparison to the membership customers; 
+To further test the reliability of our assumption that casual customer always use more time than member, we need to test if the average time for using shared bike are the same or one is more than another. 
+Firstly, we can use the averages in August to construct and compare two Confidence Interval by using the 95% default confident level. 
+Then, we'll do a hypothesis testing with null hypothesis that is "average time of member is less than average time of casual/difference between member average time and casual average time is less than zero"; we did this testing by T-Test, because we want to test the average with only two categories, which are 'member' and 'casual'.
+If the test results indicate more reliability of our assumptions, then we have more confidence to recommend the company to change their pricing strategy, 
+
+```{r, results=TRUE}
+
+print('CI for Casual')
+ttest2 <- t.test(casual_clean$Total_Time)
+ttest2$conf.int
+
+
+print('CI for Membership')
+ttest1 <- t.test(membership_clean$Total_Time)
+ttest1$conf.int
+
+```
+
+According to the CI Information above, se can see there's no overlap between these two CIs, and the interval for average time of casual customers are much larger than the interval for average time of member customers, which indicates more reliability of our assumption. 
+
+Secondly, we can do a hypothesis testing between these 2 averages. 
+We set our two hypothesis as 
+H0: Avg(Casual)<=Avg(Membership).
+H1: Avg(Casual)>Avg(Membership)
+(In case having relatively large p-value, we set a 5% significance level)
+
+```{r, results=TRUE}
+
+ttest2sample_total_time <- t.test(casual_clean$Total_Time, membership_clean$Total_Time, mu=0, alternative = 'greater')
+# Have to prove casual_clean at first argument because our alternative hypothesis is 'avg(casual)-avg(membership)>0' instead of 'avg(membership)-avg(casual)>0；if we put membership_clean at the first argument, then the result will have a extremely large p-value
+ttest2sample_total_time
+
+```
+
+According to the p-value for differences in total time between two types of customers is 2.2e-16, because our p-value is extremely small, so the data presented is enough evidence to reject null hypothesis H0, and we can’t say the average riding time of membership is less than or the same as average riding time of casual customers, which indicate we are more favor in the alternative hypothesis and that also increase our assumption's reliability. 
+
+
+
+### Classic Bike vs Electric Bike:
+Except subseting the riding time based on membership type, we can also subset the time based on bike types, so that the company can know which bike had been used more and that may not only help on their pricing strategy, but also bike storage, and even bike distribution strategy.     
+Like before, firstly we subset the data based on the "rideable_type" column, but we only considered the classic bike and electric bike even though there's one more bike type named 'docked bike', this because there's only 3 observations for the docked bike within total over 7000 observations dataset, so we just ignore this category. 
+
+```{r, results=TRUE}
+
+classic_bike <- subset(bike, !is.na(Total_Time)&rideable_type=='classic_bike', select=c(rideable_type, Total_Time))
+
+electric_bike <- subset(bike, !is.na(Total_Time)&rideable_type=='electric_bike', select=c(rideable_type, Total_Time))
+
+print('classic_bike structure：')
+str(classic_bike)
+print('electric_bike structure：')
+str(electric_bike)
+```
+
+Then, we'll check their summary statistics for both of the subsets
+
+```{r, results=TRUE}
+
+print('Summary Statistic for classic bike')
+summary(classic_bike$Total_Time)
+sd(classic_bike$Total_Time)
+
+print('Summary Statistic for electric bike')
+summary(electric_bike$Total_Time)
+sd(electric_bike$Total_Time)
+
+```
+
+Recall the time boundary is 30-mins (for casual customers) and 45-mins (for member customers) for extra price, then, same logic：
+We can see that there's about less than 25% of people using more than 28mins for classic bike and more than 22 mins for electric bike, but these information was not enough, we want to know the information about proportion related with the time boundaries, so that we can which type of bike is more in favor and make some recommendations about the bike storage plan for the company, so then we need to check the distribution of these two data for more detailed information.
+
+```{r, results=TRUE}
+
+ggplot(data=classic_bike, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for classic bike using time')
+qqnorm(classic_bike$Total_Time, main='qqplot for time of using classic bike', col='red')
+qqline(classic_bike$Total_Time, col='blue')
+
+ggplot(data=electric_bike, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for electric bike using time')
+qqnorm(electric_bike$Total_Time, main='qqplot for time of using electric bike', col='red')
+qqline(electric_bike$Total_Time, col='blue')
+
+```
+
+We can see that both the data are highly right-skewed, which means there are some few extremely large outliers in the data, so we'll exclude those outliers and replace them with null values first in case they will affect the accuracy of our result. 
+
+```{r, results=TRUE}
+
+classic_clean_1 <- ezids::outlierKD2 (classic_bike, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+summary(classic_clean_1$Total_Time)
+
+
+electric_clean_1 <- ezids::outlierKD2 (electric_bike, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+summary(electric_clean_1$Total_Time)
+
+```
+
+After the outliers was removed, we clear the null values again
+
+```{r, results=TRUE}
+
+library(ggplot2)
+
+classic_clean <- subset(classic_clean_1, !is.na(Total_Time))
+electric_clean <- subset(electric_clean_1, !is.na(Total_Time))
+
+```
+
+For clear visual, we create the charts for both categories again. 
+
+```{r, results=TRUE}
+
+ggplot(data=classic_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for Classic bike time (Removed Outliers)')
+ggplot(data=classic_clean, aes(Total_Time)) + geom_boxplot (colour='orange', fill='blue', outlier.colour='red', outlier.size = 4)+labs(title='Boxplot for Classic bike time (Removed Outliers)')
+
+ggplot(data=electric_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for Electric bike time (Removed Outliers)')
+ggplot(data=electric_clean, aes(Total_Time)) + geom_boxplot (colour='orange', fill='blue', outlier.colour='red', outlier.size = 4)+labs(title='Boxplot for Electric bike time (Removed Outliers)')
+
+```
+
+Then, we can see our data is cleaned and approximately normal, then we'll use the distribution to find the probability of the time boundary like before. 
+1). 30 mins (Time boundary for casuals)：
+
+```{r, results=TRUE}
+
+print('The proportion of using classic bike more than 30mins is about：')
+pnorm(30, mean(classic_clean$Total_Time), sd(classic_clean$Total_Time),lower.tail=FALSE)
+
+print('The proportion of using electric bike more than 30mins is about：')
+pnorm(30, mean(electric_clean$Total_Time), sd(electric_clean$Total_Time),lower.tail=FALSE)
+
+```
+
+2). 45 mins (Time boundary for members)：
+
+```{r, results=TRUE}
+
+print('The proportion of using classic bike more than 45mins is about：')
+pnorm(45, mean(classic_clean$Total_Time), sd(classic_clean$Total_Time),lower.tail=FALSE)
+
+print('The proportion of using electric bike more than 45mins is about：')
+pnorm(45, mean(electric_clean$Total_Time), sd(electric_clean$Total_Time),lower.tail=FALSE)
+
+```
+
+According to the probability for both boundaries, we can see that no matter at what time boundary, boundary for casual (30 mins) or membership (45 mins), the proportion of using classic bike is always more than the proportion of using electric bike. 
+Thus, we made an assumption that the classic bike using time is more than the electrical bike.
+Then we need to test its reliability so that we can have more confidence to make recommendations to the company to adjust their business plan next year.  
+We will construct and compare the Confidence Intervals of the average using time of these two types of bike, and do a hypothesis with T-Test also for comparing these two averages. 
+
+```{r, results=TRUE}
+print('CI for Classic bike time')
+ttest3 <- t.test(classic_clean$Total_Time)
+ttest3$conf.int
+
+
+print('CI for Electric bike time')
+ttest4 <- t.test(electric_clean$Total_Time)
+ttest4$conf.int
+
+```
+
+According to the results above, we can see that there's no overlap between classic-bike's CI and electric-bike's CI and the interval for classic bike is much larger than the classic bike's, which increase the reliability of our assumption.
+
+Then we do the hypothesis testing with T-Test with hypothesis:
+H0: Avg(classic_bike) <= Avg(electric_bike)
+H1: Avg(classic_bike) > Avg(electric_bike)
+```{r, results=TRUE}
+
+ttest2sample_total_time_2 <- t.test(classic_clean$Total_Time, electric_clean$Total_Time, mu=0, alternative = 'greater' )
+ttest2sample_total_time_2
+
+```
+According to the p-value for differences in total using time between two types of bikes is 2.2e-10, because our p-value is extremely small, so the data presented is enough evidence to reject null hypothesis H0, and we can’t say two types of bikes always have the same riding time or the classic_bike time is less than electric bike, which indicates we are more favor in the alternative hypothesis and that also increase the reliability of our assumption. 
+
+# Conclusion & SMART Question Review
+
