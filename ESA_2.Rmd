@@ -1,0 +1,130 @@
+---
+title: "EDS"
+output: html_document
+date: "2022-11-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(purrr)#to join all files
+library(lubridate)# for duration of time
+library(ModelMetrics)
+library(pROC)
+library(dplyr)
+library(tidyr)
+```
+
+
+#joining four months in one sheet
+```{r}
+#bind all the files in this path together
+file.list <- list.files(pattern='*.csv')
+
+# need an id-column with the file-names
+file.list <- setNames(file.list, file.list)
+
+#want only sheet 4, skip 1 row and name id column month
+bike <-map_df(file.list, function(x) read.csv(x))
+
+str(bike)
+```
+
+#Preparing columns for modeling
+```{r}
+#bike <- data.frame(read.csv("bo.csv"))
+bike$rideable_type <- factor(bike$rideable_type)
+bike$member_casual <- factor(bike$member_casual)
+# split started_at/ ended_at to date column and time column
+# change start_date/end_date to date type
+bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M") 
+bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M") 
+bike$start_date <- as.Date(bike$started_at)
+bike$end_date <- as.Date(bike$ended_at)
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
+bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+bike$days <- format(bike$start_date, format = "%a")
+#take the day to another column and delete the year and month
+# make a plot to check if there is relationship between the days and the number of casual or members
+
+```
+# need to check for codes for times and days being rounded not bigger or lower
+
+#make the time as a duration of mints
+
+```{r}
+res <- hm(bike$start_time)# format to 'hours:minutes'
+bike$startingm <- hour(res)*60 + minute(res)
+
+#one hot incoding of days
+bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
+```
+
+
+##Drop non-needed columns
+```{r}
+#selecting the columns we want
+want <- c('member_casual', 'rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','rideable_type', 'Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
+
+df2 <- bike[,(names(bike) %in% want)]
+#Delete the na 
+
+df<-na.omit(df2)
+```
+
+
+#find the most influnsing factors
+```{r}
+agesurvive = xtabs(~ member_casual + rideable_type, data = df)
+chisq.test(agesurvive)
+```
+
+they are dependent factors
+
+```{r}
+agesurvive2 = xtabs(~ member_casual + Total_Time, data = df)
+chisq.test(agesurvive2)
+```
+
+dependent due to low p-value
+
+```{r}
+agesurvive3 = xtabs(~ member_casual + start_station_id , data = df)
+chisq.test(agesurvive3)
+```
+
+Interestingly very low p-value
+
+```{r}
+agesurvive4 = xtabs(~ member_casual + end_station_id , data = df)
+chisq.test(agesurvive4)
+```
+
+dependent due to low p-value
+
+```{r}
+agesurvive5 = xtabs(~ member_casual + startingm , data = df)
+chisq.test(agesurvive5)
+```
+dependent due to low p-value
+
+```{r}
+customerLogit <- glm(member_casual ~ end_station_id+start_station_id+Total_Time+rideable_type+ startingm:(Fri+Mon+Sat+Sun+Thu+Tue+Wed), data = df, family = "binomial")
+summary(customerLogit)
+```
+
+###Checking the AUC
+```{r,results='markup'}
+prob=predict(customerLogit, type = "response" )
+df$prob=prob
+e <- roc(member_casual~prob, data=df)
+auc(e) # area-under-curve 
+plot(e)
+```
+
+```{r,results='markup'}
+confusionMatrix(actual=customerLogit$y,predicted=customerLogit$fitted.values)
+#make a graph to see how many members and casuales you have. 
+```
+
+This model can predict casuals but not members! the probability to predict the annuals is almost %50. I beleive because there are more casuals in the data set than the annuals.
