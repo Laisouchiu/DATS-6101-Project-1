@@ -30,6 +30,13 @@ bike <-map_df(file.list, function(x) read.csv(x))
 str(bike)
 ```
 
+```{r}
+bike%>%group_by(member_casual)%>%
+  summarise(count = n())
+
+#70% is unbalanced data set and this cut is more than that
+```
+
 #Preparing columns for modeling
 ```{r}
 #bike <- data.frame(read.csv("bo.csv"))
