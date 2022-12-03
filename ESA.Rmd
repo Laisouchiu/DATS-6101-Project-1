@@ -13,6 +13,7 @@ library(pROC)
 library(dplyr)
 library(tidyr)
 library(caret)
+library(ggplot2)
 ```
 
 
@@ -30,41 +31,50 @@ bike <-map_df(file.list, function(x) read.csv(x))
 str(bike)
 ```
 
+```{r}
+bike%>%group_by(member_casual)%>%
+  summarise(count = n())
+
+#70% is unbalanced data set and this cut is more than that
+```
+
 #Preparing columns for modeling
 ```{r}
-#bike <- data.frame(read.csv("bo.csv"))
-bike$rideable_type <- as.integer(factor(bike$rideable_type))
-bike$member_casual <- as.integer(factor(bike$member_casual))
-#make it to casual = 0, member= 1 
-bike$member_casual<-ifelse(bike$member_casual==1,1,0)
+
+bike$rideable_type <- factor(as.integer(factor(bike$rideable_type)))
+bike$start_station_id <- factor(bike$start_station_id)
+bike$end_station_id <- factor(bike$end_station_id)
+# make it to casual = 0, member= 1 
+bike$member_casual<-factor(ifelse(bike$member_casual=='casual',0,1))
+
 # split started_at/ ended_at to date column and time column
 # change start_date/end_date to date type
-bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M") 
+bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M")
 bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M") 
-bike$start_date <- as.Date(bike$started_at)
-bike$end_date <- as.Date(bike$ended_at)
+
+# covert date to date type to get the time differnce
 bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
 bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
 bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+
+# take only the day from the date
+bike$start_date <- as.Date(bike$started_at)
 bike$days <- format(bike$start_date, format = "%a")
-#take the day to another column and delete the year and month
-# make a plot to check if there is relationship between the days and the number of casual or members
 
 ```
-# need to check for codes for times and days being rounded not bigger or lower
+
 
 #make the time as a duration of mints
-
 ```{r}
 res <- hm(bike$start_time)# format to 'hours:minutes'
 bike$startingm <- hour(res)*60 + minute(res)
 
-#one hot incoding of days
+#one hot encoding of days
 bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
 ```
 
 
-##Drop non-needed columns
+## Drop non-needed columns
 ```{r}
 #selecting the columns we want
 want <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
@@ -80,56 +90,45 @@ df <- df %>%
   select('member_casual', everything())
 ```
 
-##carrolation metrix
+# Check if we have unbalanced data
 ```{r}
-library(corrplot)
+df%>%group_by(member_casual)%>%
+  summarise(count = n())
 
+df %>% count(member_casual)
+ggplot(df, aes(member_casual, fill = member_casual))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "User membersip types", x= "types of memebership")+
+  theme_classic()
 ```
 
-#find the most influnsing factors
+# Dependent variables
 ```{r}
 agesurvive = xtabs(~ member_casual + rideable_type, data = df)
 chisq.test(agesurvive)
-```
-
-they are dependent factors
-
-```{r}
 agesurvive2 = xtabs(~ member_casual + Total_Time, data = df)
 chisq.test(agesurvive2)
-```
-
-dependent due to low p-value
-
-```{r}
 agesurvive3 = xtabs(~ member_casual + start_station_id , data = df)
 chisq.test(agesurvive3)
-```
-
-Interestingly very low p-value
-
-```{r}
 agesurvive4 = xtabs(~ member_casual + end_station_id , data = df)
 chisq.test(agesurvive4)
-```
-
-dependent due to low p-value
-
-```{r}
 agesurvive5 = xtabs(~ member_casual + startingm , data = df)
 chisq.test(agesurvive5)
 ```
-dependent due to low p-value
+
+they are dependent factors due to low p-value
 
 # scale and devide the data
 ```{r}
-scaleddf <- as.data.frame(scale(df[2:13], center = TRUE, scale = TRUE))
+#scaleddf <- as.data.frame(scale(df[2:13], center = TRUE, scale = TRUE))
 set.seed(321)
-df_sample <- sample(2, nrow(scaleddf), replace=TRUE, prob=c(0.75, 0.25))
+df_sample <- sample(2, nrow(df), replace=TRUE, prob=c(0.75, 0.25))
 
 
-train_X <- scaleddf[df_sample==1, 1:12]
-test_X <- scaleddf[df_sample==2, 1:12]
+train_X <- df[df_sample==1, 1:12]
+test_X <- df[df_sample==2, 1:12]
 
 
 train_y <- df[df_sample==1, 1]
@@ -145,20 +144,38 @@ customerLogit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ starting
 summary(customerLogit)
 ```
 
-# see 0.5 cut
 ```{r}
-logitpredict.5 <- confupredict(customerLogit, newdata = test_X, type = "response") > 0.5
-crossTable = table(logitpredict.5,test_y)
-crossTable
+#coefftinc
+expcoeff = exp(coef(customerLogit))
+expcoeff
 ```
 
-Would it be possible to say that our one time customers that match the behaviors of annual customers are the false 1?
-
-###The accuracy of the model of 0.5 cutoff :
+# See how well the model is doing by running suveral tests:
+## Deviance tests
+### A GOF deviance test for the null model:
 ```{r}
-format(100*(crossTable[1,1]+crossTable[2,2])/sum(crossTable), digits=4)
+p_value <- pchisq(31728, 23813, lower.tail = FALSE)
+p_value
 ```
-###Checking the AUC
+
+IDK if reject null hypothesis that model fits well with data!!
+
+### A GOF deviance test for the fitted model:
+```{r}
+p_value2 = pchisq(25770, 23708, lower.tail=F)  
+p_value2
+```
+IDK if to reject or not 
+
+### is the fitted model better than the null model?
+```{r}
+
+pchisq(31728-23813, 25770-23708, lower.tail=F)
+```
+p-value < 0.05, reject null model in favor of the fitted model.
+p-value > 0.05, accept null model
+
+##AUC of the model
 ```{r,results='markup'}
 prob=predict(customerLogit, type = "response")
 e <- roc(train_y~prob)
@@ -167,3 +184,75 @@ plot(e)
 
 ```
 
+## McFadden
+```{r}
+library(pscl)
+pR2(customerLogit)
+```
+the McFadden is 1.877608e-01 
+
+### Akaike Information Criterion (AIC)
+```{r}
+AIC(customerLogit)
+
+```
+Lower AIC is better but I don't know if this is lower?
+
+
+# Make prediction
+## see 0.5 cut
+```{r}
+
+logitpredict.5 <- predict(customerLogit, newdata = test_X, type = "response") > 0.55
+
+## I don't know if members are 1 or 0 
+defult <- ifelse(logitpredict.5 =="TRUE", 1, 0)
+crossTable = table(defult,test_y)
+t <- as.data.frame(crossTable)
+crossTable
+```
+
+### plot confution metrix
+```{r}
+ggplot(data =  t, mapping = aes(x = defult, y = test_y)) +
+  geom_tile(aes(fill = Freq), colour = "white") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "#98c1d9", high = "#8f2d56") +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(title = "Confution Matrix with Cutoff at 0.05")+
+  xlab( "predected")+
+  ylab( "original")
+```
+
+###The accuracy of the model of 0.5 cutoff :
+```{r}
+format(100*(crossTable[1,1]+crossTable[2,2])/sum(crossTable), digits=4)
+```
+
+## see 0.4 cut
+```{r}
+
+logitpredict.4 <- predict(customerLogit, newdata = test_X, type = "response") > 0.4
+defult2 <- ifelse(logitpredict.4 =="TRUE", 1, 0)
+crossTable4 = table(defult2,test_y)
+d <- as.data.frame(crossTable4)
+crossTable4
+```
+### The accuracy of the model of 0.4 cutoff :
+```{r}
+format(100*(crossTable4[1,1]+crossTable4[2,2])/sum(crossTable4), digits=4)
+```
+```{r}
+
+ggplot(data = d , mapping = aes(x = defult2, y = test_y)) +
+  geom_tile(aes(fill = Freq), colour = "white") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "#98c1d9", high = "#8f2d56") +
+  theme_bw() +
+  theme(legend.position = "none")+
+  labs(title = "Confution Matrix with Cutoff at 0.04")+
+  xlab( "predected")+
+  ylab( "original")
+
+```
