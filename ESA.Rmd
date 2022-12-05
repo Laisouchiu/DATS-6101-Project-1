@@ -138,20 +138,21 @@ set.seed(321)
 df_sample <- sample(2, nrow(df), replace=TRUE, prob=c(0.75, 0.25))
 
 
-train_X <- df[df_sample==1, 1:12]
-test_X <- df[df_sample==2, 1:12]
+train_X <- df[df_sample==1, 2:7]
+test_X <- df[df_sample==2, 2:7]
 
 
 train_y <- df[df_sample==1, 1]
 test_y <- df[df_sample==2, 1]
 
+str(train_X)
 ```
 
 
 # Logistic model
 ```{r}
 #deleted start_station_id and Wed coz the model says it is not much predictable 
-customerLogit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ startingm*(Fri+Mon+Sat+Sun+Thu+Tue), data = train_X, family = "binomial")
+customerLogit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ startingm*days, data = train_X, family = "binomial")
 summary(customerLogit)
 ```
 
