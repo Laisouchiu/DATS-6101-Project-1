@@ -166,15 +166,15 @@ they are dependent factors due to low p-value except startingm
 ```{r}
 #scaleddf <- as.data.frame(scale(df[2:13], center = TRUE, scale = TRUE))
 set.seed(321)
-df_sample <- sample(2, nrow(df), replace=TRUE, prob=c(0.75, 0.25))
+df_sample_rt <- sample(2, nrow(df_rt), replace=TRUE, prob=c(0.75, 0.25))
 df
 
-train_X <- df[df_sample==1, 2:8]
-test_X <- df[df_sample==2, 2:8]
+Rt_train_X <- df_rt[df_sample_rt==1, 2:8]
+Rt_test_X <- df_rt[df_sample_rt==2, 2:8]
 
 
-train_y <- df[df_sample==1, 1]
-test_y <- df[df_sample==2, 1]
+Rt_train_y <- df_rt[df_sample_rt==1, 1]
+Rt_test_y <- df_rt[df_sample_rt==2, 1]
 
 ```
 
@@ -182,8 +182,8 @@ test_y <- df[df_sample==2, 1]
 # Logistic model
 ```{r}
 #deleted start_station_id and Wed coz the model says it is not much predictable 
-customerLogit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ startingm*days+ endingm*days, data = train_X, family = "binomial")
-summary(customerLogit)
+Bike_Type_Logit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ endingm*days, data = train_X, family = "binomial")
+summary(Bike_Type_Logit)
 ```
 
 ```{r}
