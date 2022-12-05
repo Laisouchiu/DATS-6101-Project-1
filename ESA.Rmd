@@ -66,21 +66,20 @@ bike$days <- factor(format(bike$start_date, format = "%a"))
 str(bike)
 ```
 
-
 #make the time as a duration of mints
 ```{r}
 res <- hm(bike$start_time)# format to 'hours:minutes'
 bike$startingm <- hour(res)*60 + minute(res)
 
+str(bike)
 #one hot encoding of days
-bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
+# bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
 ```
-
 
 ## Drop non-needed columns
 ```{r}
 #selecting the columns we want
-want <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
+want <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm', 'days')
 
 df2 <- bike[,(names(bike) %in% want)]
 
