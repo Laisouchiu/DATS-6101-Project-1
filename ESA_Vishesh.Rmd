@@ -115,11 +115,11 @@ ggplot(df, aes(member_casual, fill = member_casual))+
   theme_classic()
 ```
 ```{r}
-df%>%group_by(rideable_type)%>%
+df_rt%>%group_by(rideable_type)%>%
   summarise(count = n())
 
-df %>% count(rideable_type)
-ggplot(df, aes(rideable_type, fill = rideable_type))+
+df_rt %>% count(rideable_type)
+ggplot(df_rt, aes(rideable_type, fill = rideable_type))+
   geom_bar()+
   scale_fill_brewer(palette = "BuPu")+
   guides(fill="none")+
@@ -147,17 +147,17 @@ they are dependent factors due to low p-value
 
 # Dependent variables
 ```{r}
-Chi_rt1 = xtabs(~ rideable_type + member_casual, data = df)
+Chi_rt1 = xtabs(~ rideable_type + member_casual, data = df_rt)
 chisq.test(Chi_rt1)
-Chi_rt2 = xtabs(~ rideable_type + Total_Time, data = df)
+Chi_rt2 = xtabs(~ rideable_type + Total_Time, data = df_rt)
 chisq.test(Chi_rt2)
-Chi_rt3 = xtabs(~ rideable_type + start_station_id , data = df)
+Chi_rt3 = xtabs(~ rideable_type + start_station_id , data = df_rt)
 chisq.test(Chi_rt3)
-Chi_rt4 = xtabs(~ rideable_type + end_station_id , data = df)
+Chi_rt4 = xtabs(~ rideable_type + end_station_id , data = df_rt)
 chisq.test(Chi_rt4)
-Chi_rt5 = xtabs(~ rideable_type + startingm , data = df)
+Chi_rt5 = xtabs(~ rideable_type + startingm , data = df_rt)
 chisq.test(Chi_rt5)
-Chi_rt6 = xtabs(~ rideable_type + endingm , data = df)
+Chi_rt6 = xtabs(~ rideable_type + endingm , data = df_rt)
 chisq.test(Chi_rt6)
 ```
 they are dependent factors due to low p-value except startingm
@@ -310,7 +310,6 @@ ggplot(data = d , mapping = aes(x = defult2, y = test_y)) +
 
 # scale and devide the data
 ```{r}
-#scaleddf <- as.data.frame(scale(df[2:13], center = TRUE, scale = TRUE))
 set.seed(321)
 df_sample <- sample(2, nrow(df), replace=TRUE, prob=c(0.75, 0.25))
 df
