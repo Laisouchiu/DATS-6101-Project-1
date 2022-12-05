@@ -17,7 +17,8 @@ library(ggplot2)
 ```
 
 
-#joining four months in one sheet
+# Pre-Processing
+##joining 6 months in one sheet
 ```{r}
 #bind all the files in this path together
 file.list <- list.files(pattern='*.csv')
@@ -59,25 +60,26 @@ bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units 
 
 # take only the day from the date
 bike$start_date <- as.Date(bike$started_at)
-bike$days <- format(bike$start_date, format = "%a")
+bike$days <- factor(format(bike$start_date, format = "%a"))
 
+# Check the structure again
+str(bike)
 ```
-
 
 #make the time as a duration of mints
 ```{r}
 res <- hm(bike$start_time)# format to 'hours:minutes'
 bike$startingm <- hour(res)*60 + minute(res)
 
+str(bike)
 #one hot encoding of days
-bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
+# bike <-bike %>% mutate(value = 1)  %>% spread(days, value,  fill = 0 )
 ```
-
 
 ## Drop non-needed columns
 ```{r}
 #selecting the columns we want
-want <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','Fri','Mon', 'Sat', 'Sun', 'Thu', 'Tue', 'Wed')
+want <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm', 'days')
 
 df2 <- bike[,(names(bike) %in% want)]
 
@@ -85,6 +87,7 @@ df2 <- bike[,(names(bike) %in% want)]
 df<-na.omit(df2)
 
 #make member_casual to be the first column
+
 colnames(df)
 df <- df %>%
   select('member_casual', everything())
@@ -117,8 +120,16 @@ chisq.test(agesurvive4)
 agesurvive5 = xtabs(~ member_casual + startingm , data = df)
 chisq.test(agesurvive5)
 ```
-
 they are dependent factors due to low p-value
+```{r}
+# Correlation matrix
+
+```
+
+```{r}
+# Multicollinearitly 
+
+```
 
 # scale and devide the data
 ```{r}
@@ -127,20 +138,20 @@ set.seed(321)
 df_sample <- sample(2, nrow(df), replace=TRUE, prob=c(0.75, 0.25))
 
 
-train_X <- df[df_sample==1, 1:12]
-test_X <- df[df_sample==2, 1:12]
+train_X <- df[df_sample==1, 2:7]
+test_X <- df[df_sample==2, 2:7]
 
 
 train_y <- df[df_sample==1, 1]
 test_y <- df[df_sample==2, 1]
 
+str(train_X)
 ```
-
 
 # Logistic model
 ```{r}
 #deleted start_station_id and Wed coz the model says it is not much predictable 
-customerLogit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ startingm*(Fri+Mon+Sat+Sun+Thu+Tue), data = train_X, family = "binomial")
+customerLogit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ startingm*days, data = train_X, family = "binomial")
 summary(customerLogit)
 ```
 
@@ -254,5 +265,42 @@ ggplot(data = d , mapping = aes(x = defult2, y = test_y)) +
   labs(title = "Confution Matrix with Cutoff at 0.04")+
   xlab( "predected")+
   ylab( "original")
+
+```
+
+
+# Topic2
+## Step1: 
+```{r}
+
+```
+
+## Step2: 
+```{r}
+
+```
+
+## Step3: 
+```{r}
+
+```
+
+## Step4: 
+```{r}
+
+```
+
+## Step5: 
+```{r}
+
+```
+
+## Step6: 
+```{r}
+
+```
+
+## Step7: 
+```{r}
 
 ```
