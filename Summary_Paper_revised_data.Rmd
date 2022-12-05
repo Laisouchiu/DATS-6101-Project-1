@@ -187,7 +187,7 @@ ggplot(bike, aes(member_casual, fill = member_casual))+
 ```
 
 There are more `causal` users than `annual membership` users, which is
-4069 - 3347 = **722** user difference on August 2022. The `causal` users
+24282 - 15180 = **9102** user difference on August 2022. The `causal` users
 **Single** trip cost 2.25\$ per 30min `annual` membership on the other
 hand cost 85\$ a year.
 
@@ -205,7 +205,7 @@ ggplot(bike, aes(rideable_type, fill = rideable_type))+
   
 ```
 
-There are few users of docked bike type comparing to the others.
+There are few users of docked bike type comparing to the others and Electric bike is used the most.
 
 ### Casual vs Annual memeber bike preference
 
@@ -224,7 +224,7 @@ ggplot(members_preferance, aes(x= member_casual,y = used , fill = rideable_type)
 
 There is no huge difference between annual members in choosing classic
 or electric bikes, Casual members choose electric bikes over the classic
-by around 680 user.
+by around 2190 user.
 
 ### Comparison of users by week
 
@@ -248,7 +248,7 @@ ggplot(bike, aes(days, fill = days))+
 
 ```
 
-Saturdays and Wednesdays have the most number of users and Sunday has
+Friday, Saturdays and Sunday have the most number of users and Monday has
 least.
 
 ### When is the highest-lowest time of use of the day?
@@ -270,8 +270,7 @@ ggplot(sum_hour, aes(hour, sum_hour ))+
 
 ```
 
-The peak hours of August is between 3:00pm to 7:30pm with above 400
-user.
+The peak hours is between 4:00pm to 7:00pm with above 3000 user.
 
 ### What is the hourly use of each day?
 
