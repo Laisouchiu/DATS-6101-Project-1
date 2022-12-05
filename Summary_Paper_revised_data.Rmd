@@ -350,8 +350,8 @@ xkabledply(group_location2 , title = "Top 5 end locations")
 
 ```
 
-The top five stations users start their trips at are the same as the end
-stations (mentioned above).
+The top five stations, users start their trips at are the same as the end
+stations except station ***High St & Broad St (776 values)*** in the start station list and  for ***Lucas St & Town St (750 values)*** in the end station list (mentioned above). We can consider the top 5 stations (Bicentennial Park; North Bank Park; High St & Broad St; Scioto Audubon Center; High St & Warren) from the start station list as the difference is very minimal.
 
 # Summary of Statistics & Testing：
 
