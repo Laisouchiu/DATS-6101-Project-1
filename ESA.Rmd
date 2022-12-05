@@ -17,6 +17,7 @@ library(ggplot2)
 ```
 
 
+# Topic1: 
 #joining four months in one sheet
 ```{r}
 #bind all the files in this path together
@@ -254,5 +255,17 @@ ggplot(data = d , mapping = aes(x = defult2, y = test_y)) +
   labs(title = "Confution Matrix with Cutoff at 0.04")+
   xlab( "predected")+
   ylab( "original")
+
+```
+
+
+# Topic
+## Step1: 
+```{r}
+
+```
+
+## Step1: 
+```{r}
 
 ```
