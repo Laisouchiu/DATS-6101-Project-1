@@ -148,7 +148,6 @@ test_y <- df[df_sample==2, 1]
 str(train_X)
 ```
 
-
 # Logistic model
 ```{r}
 #deleted start_station_id and Wed coz the model says it is not much predictable 
