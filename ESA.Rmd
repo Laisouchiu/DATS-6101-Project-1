@@ -87,6 +87,7 @@ df2 <- bike[,(names(bike) %in% want)]
 df<-na.omit(df2)
 
 #make member_casual to be the first column
+
 colnames(df)
 df <- df %>%
   select('member_casual', everything())
@@ -119,8 +120,16 @@ chisq.test(agesurvive4)
 agesurvive5 = xtabs(~ member_casual + startingm , data = df)
 chisq.test(agesurvive5)
 ```
-
 they are dependent factors due to low p-value
+```{r}
+# Correlation matrix
+
+```
+
+```{r}
+# Multicollinearitly 
+
+```
 
 # scale and devide the data
 ```{r}
