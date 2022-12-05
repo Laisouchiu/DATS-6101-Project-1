@@ -182,13 +182,13 @@ Rt_test_y <- df_rt[df_sample_rt==2, 1]
 # Logistic model
 ```{r}
 #deleted start_station_id and Wed coz the model says it is not much predictable 
-Bike_Type_Logit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ endingm*days, data = train_X, family = "binomial")
+Bike_Type_Logit <- glm(Rt_train_y ~ end_station_id+Total_Time+member_casual+ endingm*days, data = Rt_train_X, family = "binomial")
 summary(Bike_Type_Logit)
 ```
 
 ```{r}
 #coefftinc
-expcoeff = exp(coef(customerLogit))
+expcoeff = exp(coef(Bike_Type_Logit))
 expcoeff
 ```
 
@@ -219,8 +219,8 @@ p-value > 0.05, accept null model
 
 ##AUC of the model
 ```{r,results='markup'}
-prob=predict(customerLogit, type = "response")
-e <- roc(train_y~prob)
+prob=predict(Bike_Type_Logit, type = "response")
+e <- roc(Rt_train_y~prob)
 auc(e) # area-under-curve 
 plot(e)
 
