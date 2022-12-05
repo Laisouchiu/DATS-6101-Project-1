@@ -60,8 +60,10 @@ bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units 
 
 # take only the day from the date
 bike$start_date <- as.Date(bike$started_at)
-bike$days <- format(bike$start_date, format = "%a")
+bike$days <- factor(format(bike$start_date, format = "%a"))
 
+# Check the structure again
+str(bike)
 ```
 
 
