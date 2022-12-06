@@ -32,7 +32,13 @@ str(bike)
 ```
 
 ```{r}
-bike%>%group_by(member_casual)%>%
+bike%>%group_by(rideable_type)%>%
+  summarise(count = n())
+
+#Remove docked bikes
+bike <-subset(bike, rideable_type != "docked_bike")
+
+bike%>%group_by(rideable_type)%>%
   summarise(count = n())
 
 #70% is unbalanced data set and this cut is more than that
@@ -62,6 +68,8 @@ bike$start_date <- as.Date(bike$started_at)
 bike$end_date <- as.Date(bike$ended_at)
 bike$days <- factor(format(bike$start_date, format = "%a"))
 
+bike
+
 ```
 
 
@@ -78,17 +86,26 @@ bike$endingm <- hour(res)*60 + minute(res)
 ```
 
 
+## Drop non-needed columns
 ```{r}
+#selecting the columns we want
+want <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','endingm','days')
 
-#make bike type to be the first column
+df2 <- bike[,(names(bike) %in% want)]
+
+#Delete the na 
+df<-na.omit(df2)
+
+
+#make member_casual to be the first column
 colnames(df)
 df_rt <- df %>%
   select('rideable_type', everything())
 df_rt
 ```
 
-
 # Check if we have unbalanced data
+
 ```{r}
 df_rt%>%group_by(rideable_type)%>%
   summarise(count = n())
@@ -100,7 +117,16 @@ ggplot(df_rt, aes(rideable_type, fill = rideable_type))+
   guides(fill="none")+
   labs(title = "User bike types", x= "bike types")+
   theme_classic()
+
 ```
+```{r}
+
+df_rt <-subset(df_rt, Total_Time != 0)
+
+df_rt
+
+```
+
 
 #dependency test
 ```{r}
@@ -112,7 +138,6 @@ Chi_rt3 = xtabs(~ rideable_type + start_station_id , data = df_rt)
 chisq.test(Chi_rt3)
 Chi_rt4 = xtabs(~ rideable_type + end_station_id , data = df_rt)
 chisq.test(Chi_rt4)
-Chi_rt5 = xtabs(~ rideable_type + startingm , data = df_rt)
 anova_rt2 = aov(rideable_type ~ startingm, data = df_rt)
 summary(anova_rt2)
 anova_rt3 = aov(rideable_type ~ endingm, data = df_rt)
@@ -124,7 +149,7 @@ summary(anova_rt3)
 ```{r}
 #scaleddf <- as.data.frame(scale(df[2:13], center = TRUE, scale = TRUE))
 set.seed(321)
-df_sample_rt <- sample(2, nrow(df_rt), replace=TRUE, prob=c(0.75, 0.25))
+df_sample_rt <- sample(2, nrow(df_rt), replace=TRUE, prob=c(0.80, 0.20))
 df
 
 Rt_train_X <- df_rt[df_sample_rt==1, 2:8]
@@ -140,7 +165,7 @@ Rt_test_y <- df_rt[df_sample_rt==2, 1]
 # Logistic model
 ```{r}
 #deleted start_station_id and Wed coz the model says it is not much predictable 
-Bike_Type_Logit <- glm(Rt_train_y ~ end_station_id+Total_Time+member_casual+ endingm*days, data = Rt_train_X, family = "binomial")
+Bike_Type_Logit <- glm(Rt_train_y ~ Total_Time + member_casual + start_station_id + end_station_id + startingm*days, data = Rt_train_X, family = "binomial")
 summary(Bike_Type_Logit)
 ```
 
@@ -239,6 +264,8 @@ crossTable4 = table(defult2,test_y)
 d <- as.data.frame(crossTable4)
 crossTable4
 ```
+
+
 ### The accuracy of the model of 0.4 cutoff :
 ```{r}
 format(100*(crossTable4[1,1]+crossTable4[2,2])/sum(crossTable4), digits=4)
