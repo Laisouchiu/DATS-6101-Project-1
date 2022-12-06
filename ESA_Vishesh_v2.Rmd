@@ -43,6 +43,22 @@ bike%>%group_by(rideable_type)%>%
 
 #70% is unbalanced data set and this cut is more than that
 ```
+```{r}
+
+dim(bike)
+
+quartiles <- quantile(bike$Sepal.Width, probs=c(.25, .75), na.rm = FALSE)
+IQR <- IQR(bike$Sepal.Width)
+ 
+Lower <- quartiles[1] - 1.5*IQR
+Upper <- quartiles[2] + 1.5*IQR 
+ 
+data_no_outlier <- subset(bike, bike$Sepal.Width > Lower & bike$Sepal.Width < Upper)
+ 
+dim(data_no_outlier)
+
+data_no_outlier
+```
 
 #Preparing columns for modeling
 ```{r}
@@ -61,7 +77,9 @@ bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M")
 # covert date to date type to get the time differnce
 bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
 bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
-bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+#bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+
+bike$Total_Time <- abs(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")))
 
 # take only the day from the date
 bike$start_date <- as.Date(bike$started_at)
@@ -121,9 +139,9 @@ ggplot(df_rt, aes(rideable_type, fill = rideable_type))+
 ```
 ```{r}
 
-df_rt <-subset(df_rt, Total_Time != 0)
+df_rt_check <-subset(df_rt, Total_Time > 0)
 
-df_rt
+df_rt_check
 
 ```
 
@@ -132,40 +150,57 @@ df_rt
 ```{r}
 Chi_rt1 = xtabs(~ rideable_type + member_casual, data = df_rt)
 chisq.test(Chi_rt1)
-#anova_rt1 = aov(rideable_type ~ Total_Time, data = df_rt)
-#summary(anova_rt1)
+anova_rt1 = aov(rideable_type ~ Total_Time, data = df_rt)
+anova_rt1
 Chi_rt3 = xtabs(~ rideable_type + start_station_id , data = df_rt)
 chisq.test(Chi_rt3)
 Chi_rt4 = xtabs(~ rideable_type + end_station_id , data = df_rt)
 chisq.test(Chi_rt4)
-anova_rt2 = aov(rideable_type ~ startingm, data = df_rt)
-summary(anova_rt2)
-anova_rt3 = aov(rideable_type ~ endingm, data = df_rt)
-summary(anova_rt3)
+#anova_rt2 = aov(rideable_type ~ startingm, data = df_rt)
+#summary(anova_rt2)
+#anova_rt3 = aov(rideable_type ~ endingm, data = df_rt)
+#summary(anova_rt3)
+```
+```{r}
+
+set.seed(123)
+stratified1 = (df_rt %>% select(rideable_type, Total_Time, member_casual, start_station_id, startingm, endingm, days))
+stratified <- stratified1 %>%
+    group_by(rideable_type) %>%
+    sample_n(size=5000)
+
+#str(stratified)
+df_rt = data.frame(stratified)
+
+#df_rt_check <-subset(df_rt, end_station_id == 0)
+
 ```
 
 
 #Test and train split
 ```{r}
 #scaleddf <- as.data.frame(scale(df[2:13], center = TRUE, scale = TRUE))
-set.seed(321)
+set.seed(333)
 df_sample_rt <- sample(2, nrow(df_rt), replace=TRUE, prob=c(0.80, 0.20))
-df
 
-Rt_train_X <- df_rt[df_sample_rt==1, 2:8]
-Rt_test_X <- df_rt[df_sample_rt==2, 2:8]
+
+Rt_train_X <- df_rt[df_sample_rt==1, 1:7]
+Rt_test_X <- df_rt[df_sample_rt==2, 1:7]
 
 
 Rt_train_y <- df_rt[df_sample_rt==1, 1]
 Rt_test_y <- df_rt[df_sample_rt==2, 1]
 
+df_rt
+
 ```
+
 
 
 # Logistic model
 ```{r}
 #deleted start_station_id and Wed coz the model says it is not much predictable 
-Bike_Type_Logit <- glm(Rt_train_y ~ Total_Time + member_casual + start_station_id + end_station_id + startingm*days, data = Rt_train_X, family = "binomial")
+Bike_Type_Logit <- glm(rideable_type ~ Total_Time + member_casual + start_station_id + endingm, data = as.data.frame(Rt_train_X), family = "binomial", na.action=na.omit)
 summary(Bike_Type_Logit)
 ```
 
@@ -177,28 +212,7 @@ expcoeff
 
 # See how well the model is doing by running suveral tests:
 ## Deviance tests
-### A GOF deviance test for the null model:
-```{r}
-p_value <- pchisq(31728, 23813, lower.tail = FALSE)
-p_value
-```
 
-IDK if reject null hypothesis that model fits well with data!!
-
-### A GOF deviance test for the fitted model:
-```{r}
-p_value2 = pchisq(25770, 23708, lower.tail=F)  
-p_value2
-```
-IDK if to reject or not 
-
-### is the fitted model better than the null model?
-```{r}
-
-pchisq(31728-23813, 25770-23708, lower.tail=F)
-```
-p-value < 0.05, reject null model in favor of the fitted model.
-p-value > 0.05, accept null model
 
 ##AUC of the model
 ```{r,results='markup'}
@@ -207,6 +221,28 @@ e <- roc(Rt_train_y~prob)
 auc(e) # area-under-curve 
 plot(e)
 
+
+#prob=predict(Bike_Type_Logit, type = "response", data = Rt_test_X)
+#e <- roc(Rt_test_y ~ prob, data = cbind(Rt_test_X, Rt_test_y))
+#auc(e) # area-under-curve 
+#plot(e)
+
+#prob=predict(Bike_Type_Logit, type = "response", data = Rt_test_X)
+#e <- roc(Rt_test_y~prob, data = cbind(Rt_test_X, Rt_test_y))
+#auc(e) # area-under-curve 
+#plot(e)
+
+proc=predict(Bike_Type_Logit, type = "response", newdata = Rt_test_X)
+Rt_test_X$proc=proc
+roc <- roc(rideable_type~proc, data= Rt_test_X)
+print(roc)
+
+```
+
+```{r}
+
+print(confusionMatrix(proc, Rt_test_y))
+
 ```
 
 ## McFadden
@@ -214,7 +250,7 @@ plot(e)
 library(pscl)
 pR2(Bike_Type_Logit)
 ```
-the McFadden is 1.877608e-01 
+
 
 ### Akaike Information Criterion (AIC)
 ```{r}
@@ -224,11 +260,26 @@ AIC(Bike_Type_Logit)
 Lower AIC is better but I don't know if this is lower?
 
 
+```{r}
+
+pred_1 = predict(Bike_Type_Logit, Rt_test_X, type="response")
+paste0("Accuracy = ",mean(Bike_Type_Logit$rideable_type == pred_1))
+
+bt$prob = as.numeric(unlist(as.data.frame(pred_1)[2]))
+bt$rideable_type = as.numeric(as.character(bt$rideable_type))
+bt$prob = round(bt$prob)
+h <- roc(rideable_type~prob, data=Rt_test_X)
+print(h)
+plot(h,main="ROC Curve for Random Forest",col=2,lwd=2)
+
+
+```
+
 # Make prediction
 ## see 0.5 cut
 ```{r}
 
-logitpredict.5 <- predict(customerLogit, newdata = test_X, type = "response") > 0.55
+logitpredict.5 <- predict(Bike_Type_Logit, newdata = test_X, type = "response") > 0.55
 
 ## I don't know if members are 1 or 0 
 defult <- ifelse(logitpredict.5 =="TRUE", 1, 0)
