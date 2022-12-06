@@ -88,6 +88,9 @@ df2 <- bike[,(names(bike) %in% want)]
 #Delete the na 
 df<-na.omit(df2)
 
+#Remove docked bikes
+df_check <-subset(df, rideable_type != 2)
+
 #make member_casual to be the first column
 colnames(df)
 df <- df %>%
@@ -126,7 +129,18 @@ ggplot(df_rt, aes(rideable_type, fill = rideable_type))+
   labs(title = "User bike types", x= "bike types")+
   theme_classic()
 ```
+```{r}
+df_check%>%group_by(rideable_type)%>%
+  summarise(count = n())
 
+df_check %>% count(rideable_type)
+ggplot(df_check, aes(rideable_type, fill = rideable_type))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "User bike types", x= "bike types")+
+  theme_classic()
+```
 # Dependent variables
 ```{r}
 agesurvive = xtabs(~ member_casual + rideable_type, data = df)
@@ -166,7 +180,7 @@ they are dependent factors due to low p-value except startingm
 ```{r}
 #scaleddf <- as.data.frame(scale(df[2:13], center = TRUE, scale = TRUE))
 set.seed(321)
-df_sample_rt <- sample(2, nrow(df_rt), replace=TRUE, prob=c(0.75, 0.25))
+df_sample_rt <- sample(2, nrow(df_rt), replace=TRUE, prob=c(0.80, 0.20))
 df
 
 Rt_train_X <- df_rt[df_sample_rt==1, 2:8]
