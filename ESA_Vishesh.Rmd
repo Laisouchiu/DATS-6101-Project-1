@@ -89,7 +89,7 @@ df2 <- bike[,(names(bike) %in% want)]
 df<-na.omit(df2)
 
 #Remove docked bikes
-df_check <-subset(df, rideable_type != 2)
+df <-subset(df, rideable_type != 2)
 
 #make member_casual to be the first column
 colnames(df)
@@ -129,18 +129,7 @@ ggplot(df_rt, aes(rideable_type, fill = rideable_type))+
   labs(title = "User bike types", x= "bike types")+
   theme_classic()
 ```
-```{r}
-df_check%>%group_by(rideable_type)%>%
-  summarise(count = n())
 
-df_check %>% count(rideable_type)
-ggplot(df_check, aes(rideable_type, fill = rideable_type))+
-  geom_bar()+
-  scale_fill_brewer(palette = "BuPu")+
-  guides(fill="none")+
-  labs(title = "User bike types", x= "bike types")+
-  theme_classic()
-```
 # Dependent variables
 ```{r}
 agesurvive = xtabs(~ member_casual + rideable_type, data = df)
