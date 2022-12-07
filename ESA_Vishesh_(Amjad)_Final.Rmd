@@ -168,8 +168,8 @@ str(train_X)
 # Logistic model
 ```{r}
 
-Bike_Type_Logit <- glm(train_y ~ start_station_id+ end_station_id+Total_Time+member_casual+ startingm*days + endtingm , data = train_X, family = "binomial")
-summary(customerLogit)
+Bike_Type_Logit <- glm(train_y ~ start_station_id+ end_station_id+Total_Time+member_casual+ startingm*days + endingm , data = train_X, family = "binomial")
+summary(Bike_Type_Logit)
 
 ```
 
@@ -189,6 +189,12 @@ proc=predict(Bike_Type_Logit, type = "response", newdata = test_X)
 test_X$proc=proc
 roc <- roc(test_y~proc)
 print(roc)
+plot(roc)
+```
+
+```{r}
+
+
 
 ```
 
