@@ -14,6 +14,7 @@ library(dplyr)
 library(tidyr)
 library(caret)
 library(ggplot2)
+library(ezids)
 ```
 
 
@@ -43,27 +44,10 @@ bike%>%group_by(rideable_type)%>%
 
 #70% is unbalanced data set and this cut is more than that
 ```
-```{r}
-
-dim(bike)
-
-quartiles <- quantile(bike$Sepal.Width, probs=c(.25, .75), na.rm = FALSE)
-IQR <- IQR(bike$Sepal.Width)
- 
-Lower <- quartiles[1] - 1.5*IQR
-Upper <- quartiles[2] + 1.5*IQR 
- 
-data_no_outlier <- subset(bike, bike$Sepal.Width > Lower & bike$Sepal.Width < Upper)
- 
-dim(data_no_outlier)
-
-data_no_outlier
-```
-
 #Preparing columns for modeling
 ```{r}
 
-bike$rideable_type <- factor(as.integer(factor(bike$rideable_type)))
+bike$rideable_type <- factor(ifelse(bike$rideable_type=="classic_bike",0,1))
 bike$start_station_id <- factor(bike$start_station_id)
 bike$end_station_id <- factor(bike$end_station_id)
 # make it to casual = 0, member= 1 
@@ -113,7 +97,7 @@ df2 <- bike[,(names(bike) %in% want)]
 
 #Delete the na 
 df<-na.omit(df2)
-df %>% drop_na()
+df <- outlierKD2(df,Total_Time)
 
 #make member_casual to be the first column
 colnames(df)
@@ -125,11 +109,11 @@ df <- df %>%
 # Check if we have unbalanced data
 
 ```{r}
-df_rt%>%group_by(rideable_type)%>%
+df%>%group_by(rideable_type)%>%
   summarise(count = n())
 
-df_rt %>% count(rideable_type)
-ggplot(df_rt, aes(rideable_type, fill = rideable_type))+
+df %>% count(rideable_type)
+ggplot(df, aes(rideable_type, fill = rideable_type))+
   geom_bar()+
   scale_fill_brewer(palette = "BuPu")+
   guides(fill="none")+
@@ -168,7 +152,7 @@ str(train_X)
 # Logistic model
 ```{r}
 
-Bike_Type_Logit <- glm(train_y ~ start_station_id+ end_station_id+Total_Time+member_casual+ startingm*days + endingm , data = train_X, family = "binomial")
+Bike_Type_Logit <- glm(train_y ~ start_station_id+ end_station_id+Total_Time*member_casual+ startingm*days +endingm , data = train_X, family = "binomial")
 summary(Bike_Type_Logit)
 
 ```
@@ -189,12 +173,6 @@ proc=predict(Bike_Type_Logit, type = "response", newdata = test_X)
 test_X$proc=proc
 roc <- roc(test_y~proc)
 print(roc)
-plot(roc)
-```
-
-```{r}
-
-
 
 ```
 
