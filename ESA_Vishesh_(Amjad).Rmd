@@ -120,7 +120,6 @@ colnames(df)
 df_rt <- df %>%
   select('rideable_type', everything())
 df_rt
-laisouchiu
 ```
 
 # Check if we have unbalanced data
