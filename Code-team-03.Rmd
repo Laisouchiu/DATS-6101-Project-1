@@ -1,0 +1,306 @@
+---
+title: "Model Building Techniques- CoGo Bike Share Data"
+author: "Team - 03"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: no
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  word_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(purrr)   #to join all files
+library(lubridate)# for duration of time
+library(ModelMetrics)
+library(pROC)
+library(dplyr)
+library(tidyr)
+library(caret)
+library(ggplot2)
+library(ezids)
+
+```
+
+
+#Source of Dataset and observation
+We are using 6 months of data covering Quarter 2 and Quarter 3 (6 months) [Not covering the entire year due to the large size of the data]
+```{r, results='markup'}
+
+#binding all the files in this path together
+file.list <- list.files(pattern='*.csv')
+
+file.list <- setNames(file.list, file.list)
+
+bike <-map_df(file.list, function(x) read.csv(x))
+
+str(bike)
+
+```
+#Features in the dataset
+Below are all the column names of the dataset
+```{r, results='markup'}
+
+colnames(bike)
+
+```
+
+# Data preparation
+
+Data contains 3 types of bikes- Classic, Electric and Docked. We are removing docked bike from the data to balance the data as the data contains only 8 docked bikes.
+
+```{r, results='markup'}
+
+bike%>%group_by(rideable_type)%>%
+  summarise(count = n())
+
+#Remove docked bikes
+bike <-subset(bike, rideable_type != "docked_bike")
+
+bike%>%group_by(rideable_type)%>%
+  summarise(count = n())
+
+```
+#Preparing columns for modeling
+```{r, results='markup'}
+
+bike$rideable_type <- factor(ifelse(bike$rideable_type=="classic_bike",0,1))
+bike$start_station_id <- factor(bike$start_station_id)
+bike$end_station_id <- factor(bike$end_station_id)
+bike$member_casual<-factor(ifelse(bike$member_casual=='casual',0,1))
+
+# Formatting started_at and ended_at column to date and time column
+bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M")
+bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M") 
+
+# Fixing the date format to get the time difference
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
+
+#Calculating the time difference 
+bike$Total_Time <- abs(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")))
+
+#Extracting the day from the date
+bike$start_date <- as.Date(bike$started_at)
+bike$end_date <- as.Date(bike$ended_at)
+bike$days <- factor(format(bike$start_date, format = "%a"))
+
+#Converting time in minutes
+res <- hm(bike$start_time)# format to 'hours:minutes'
+bike$startingm <- hour(res)*60 + minute(res)
+
+res <- hm(bike$end_time)# format to 'hours:minutes'
+bike$endingm <- hour(res)*60 + minute(res)
+
+print(head(bike))
+
+str(bike)
+
+```
+
+#selecting the features needed for the model and removing NA values from the data
+```{r, results='markup'}
+
+#selecting the features needed for the model
+
+selected_features <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','endingm','days')
+
+bike2 <- bike[,(names(bike) %in% selected_features)]
+
+#Removing NA values
+
+bike2<-na.omit(bike2)
+
+str(bike2)
+
+```
+
+SMART Questions:
+
+1. How much time will the customer (Annual membership or Casual) ride the bike if travelling from a certain station to another or using a certain bike etc? 
+
+#----------------------- Chris Code-----------------------------
+
+
+2. Which Bike type (Electric or Manual) will the customer (Annual membership or Casual) use if travelling from a certain station to another/while using a certain bike type etc? 
+
+
+We used 2 model to answer this question
+1. Logistic Regression
+2. KNN
+
+
+Model-1: Logistic Regression
+
+```{r, results='markup'}
+
+bike_RT_LR <- data.frame(bike2)
+
+#df <- outlierKD2(df,Total_Time)
+
+#making rideable_type the first column
+
+colnames(bike_RT_LR)
+bike_RT_LR <- bike_RT_LR %>%
+  select('rideable_type', everything())
+
+```
+
+# Checking for unbalanced data
+```{r, results='markup'}
+
+bike_RT_LR%>%group_by(rideable_type)%>%
+  summarise(count = n())
+
+bike_RT_LR %>% count(rideable_type)
+ggplot(bike_RT_LR, aes(rideable_type, fill = rideable_type))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "User bike types", x= "bike types")+
+  theme_classic()
+
+```
+
+#Test and train split
+```{r, results='markup'}
+
+#scaleddf <- as.data.frame(scale(df[2:13], center = TRUE, scale = TRUE))
+
+set.seed(333)
+
+bike_RT_LR_sample <- sample(2, nrow(bike_RT_LR), replace=TRUE, prob=c(0.75, 0.25))
+
+bike_RT_LR_train_X <- bike_RT_LR[bike_RT_LR_sample==1, 2:8]
+bike_RT_LR_test_X <- bike_RT_LR[bike_RT_LR_sample==2, 2:8]
+
+bike_RT_LR_train_Y <- bike_RT_LR[bike_RT_LR_sample==1, 1]
+bike_RT_LR_test_Y <- bike_RT_LR[bike_RT_LR_sample==2, 1]
+
+str(bike_RT_LR_train_X)
+
+```
+
+# Logistic model
+```{r, results='markup'}
+
+Bike_Type_Logit <- glm(bike_RT_LR_train_Y ~ start_station_id+ end_station_id+Total_Time*member_casual+ startingm*days +endingm , data = bike_RT_LR_train_X, family = "binomial")
+summary(Bike_Type_Logit)
+
+```
+
+
+# evaluating the model
+```{r, results='markup'}
+
+prob=predict(Bike_Type_Logit, type = "response")
+a <- roc(bike_RT_LR_train_Y~prob)
+auc(a) # area-under-curve 
+plot(a)
+
+```
+
+#Check the accurcy for the test
+```{r, results='markup'}
+
+proc=predict(Bike_Type_Logit, type = "response", newdata = bike_RT_LR_test_X)
+bike_RT_LR_test_X$proc=proc
+b <- roc(bike_RT_LR_test_Y~proc)
+print(b)
+plot(b)
+
+```
+
+## McFadden
+```{r, results='markup'}
+
+library(pscl)
+pR2(Bike_Type_Logit)
+
+```
+
+
+### Akaike Information Criterion (AIC)
+```{r, results='markup'}
+
+AIC(Bike_Type_Logit)
+
+```
+
+# Prediction
+## At 0.5 cut
+```{r, results='markup'}
+
+logitpredict.5 <- predict(Bike_Type_Logit, newdata = bike_RT_LR_test_X, type = "response") > 0.55
+
+defult <- ifelse(logitpredict.5 =="TRUE", 1, 0)
+crossTable = table(defult,bike_RT_LR_test_Y)
+t <- as.data.frame(crossTable)
+crossTable
+```
+
+### plot confution metrix
+```{r, results='markup'}
+
+ggplot(data =  t, mapping = aes(x = defult, y = bike_RT_LR_test_Y)) +
+  geom_tile(aes(fill = Freq), colour = "white") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "#98c1d9", high = "#8f2d56") +
+  theme_bw() + 
+  theme(legend.position = "none") +
+  labs(title = "Confution Matrix with Cutoff at 0.05")+
+  xlab( "predected")+
+  ylab( "original")
+
+```
+
+###The accuracy of the model of 0.5 cutoff :
+```{r, results='markup'}
+
+format(100*(crossTable[1,1]+crossTable[2,2])/sum(crossTable), digits=4)
+
+```
+
+## At 0.4 cut
+```{r, results='markup'}
+
+logitpredict.4 <- predict(Bike_Type_Logit, newdata = bike_RT_LR_test_X, type = "response") > 0.6
+defult2 <- ifelse(logitpredict.4 =="TRUE", 1, 0)
+crossTable4 = table(defult2,bike_RT_LR_test_Y)
+d <- as.data.frame(crossTable4)
+crossTable4
+```
+
+
+### The accuracy of the model of 0.4 cutoff :
+```{r, results='markup'}
+
+format(100*(crossTable4[1,1]+crossTable4[2,2])/sum(crossTable4), digits=4)
+
+```
+
+
+```{r, results='markup'}
+
+ggplot(data = d , mapping = aes(x = defult2, y = bike_RT_LR_test_Y)) +
+  geom_tile(aes(fill = Freq), colour = "white") +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "#98c1d9", high = "#8f2d56") +
+  theme_bw() +
+  theme(legend.position = "none")+
+  labs(title = "Confution Matrix with Cutoff at 0.04")+
+  xlab( "predected")+
+  ylab( "original")
+
+```
