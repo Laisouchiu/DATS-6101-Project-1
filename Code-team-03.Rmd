@@ -164,6 +164,7 @@ bike_afternoon <- subset(bike_lm,bike$Time_Interval =='Afternoon')
 bike_night <- subset(bike_lm, bike$Time_Interval=='Night')
 ```
 
+
 #----------------------- Chris Code End-----------------------------
 
 2. Which Bike type (Electric or Manual) will the customer (Annual membership or Casual) use if travelling from a certain station to another/while using a certain bike type etc? 
