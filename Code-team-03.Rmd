@@ -111,6 +111,7 @@ bike$start_hour <- as.numeric(bike$start_hour)
 # Use 'summary(bike$start_hour_num)' to check if the min and max are 0 and 23
 
 # Divide the time into different categories/intervals
+
 bike$Time_range <- cut(bike$start_hour, c(0, 6, 12, 18, 23), c("Before dawn", "Morning", "Afternoon", "Night"), include.lowest=TRUE)
 #0am-6am : Morning (Factor 1)
 #6am-12pm : Morning (Factor 2)
@@ -173,10 +174,7 @@ Because these fittings are really bad, so we are going to do something to improv
 According the information from previous Pre-Processing part, we had alraady checked that all variables are independent by VIF, but now because we added a new column/variable into our model, so we will just do the VIF check again
 ```{r}
 library(car)
-vif(lm_test1)
-vif(lm_test2)
-vif(lm_test3)
-vif(lm_test4)
+vif(bike_lm1)
 ```
 As we see, all the VIFs are less than 5, which is acceptable, so our current model don't have the model of multicollinearity.
 ### Normally Shaped check:
@@ -225,10 +223,10 @@ bike_clean_night <- subset(bike_clean, Time_range=='Night')
 Then, let's check the scatter plot of the total riding time and starting hour within each different time range
 ```{r}
 
-qplot (x=Total_Time, y=start_hour, data=bike_before_dawn, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Before dawn)') 
-qplot (x=Total_Time, y=start_hour, data=bike_morning, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Morning)') 
-qplot (x=Total_Time, y=start_hour, data=bike_afternoon, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Afternoon)') 
-qplot (x=Total_Time, y=start_hour, data=bike_night, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Night)') 
+qplot (x=Total_Time, y=start_hour, data=bike_clean_before_dawn, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Before dawn)') 
+qplot (x=Total_Time, y=start_hour, data=bike_clean_morning, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Morning)') 
+qplot (x=Total_Time, y=start_hour, data=bike_clean_afternoon, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Afternoon)') 
+qplot (x=Total_Time, y=start_hour, data=bike_clean_night, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Night)') 
 ```
 We see there's still not any linear relationship between total time and starting hour. 
 ## Final Conclusion
