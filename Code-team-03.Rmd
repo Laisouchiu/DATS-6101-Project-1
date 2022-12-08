@@ -62,7 +62,6 @@ colnames(bike)
 # Data preparation
 
 Data contains 3 types of bikes- Classic, Electric and Docked. We are removing docked bike from the data to balance the data as the data contains only 8 docked bikes.
-
 ```{r, results='markup'}
 
 bike%>%group_by(rideable_type)%>%
@@ -158,12 +157,35 @@ We are going to use the newly created variable 'Total_Time' and want to make a f
 ```{r}
 bike_lm <- data.frame(bike2)
 
-bike_before_dawn <- subset(bike_lm, bike$Time_Interval=='Morning')
-bike_morning <- subset(bike_lm, bike$Time_Interval=='Morning')
-bike_afternoon <- subset(bike_lm,bike$Time_Interval =='Afternoon')
-bike_night <- subset(bike_lm, bike$Time_Interval=='Night')
+bike_before_dawn <- subset(bike_lm, Time_range=='Before dawn')
+bike_morning <- subset(bike_lm, Time_range=='Morning')
+bike_afternoon <- subset(bike_lm, Time_range =='Afternoon')
+bike_night <- subset(bike_lm, Time_range=='Night')
 ```
+### Build 4 linear models for each time range and check their fittings first
+```{r}
+lm_test1 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour, data=bike_before_dawn)
+summary(lm_test1)
 
+```
+Only 4% of R-Squared, really bad fitting
+```{r}
+lm_test2 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour, data=bike_morning)
+summary(lm_test2)
+```
+Only 8% of R-Squared, really bad fitting
+```{r}
+lm_test3 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour, data=bike_afternoon)
+summary(lm_test3)
+```
+Only 5% of R-Squared, really bad fitting
+```{r}
+lm_test4 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour, data=bike_night)
+summary(lm_test4)
+```
+Only 2% of R-Squared, really bad fitting
+All of the models are pretty bad fitting based on R-Squared
+Because these fittings are really bad, so we are going to do something to improve the models: 
 
 #----------------------- Chris Code End-----------------------------
 
