@@ -331,5 +331,4 @@ ggplot(data = d , mapping = aes(x = defult2, y = test_y)) +
   labs(title = "Confution Matrix with Cutoff at 0.04")+
   xlab( "predected")+
   ylab( "original")
-
 ```
