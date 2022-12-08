@@ -1,0 +1,288 @@
+---
+title: "EDS"
+output: html_document
+date: "2022-11-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(purrr)   #to join all files
+library(lubridate)# for duration of time
+library(ModelMetrics)
+library(pROC)
+library(dplyr)
+library(tidyr)
+library(caret)
+library(ggplot2)
+```
+
+# Topic1: Pre-processing
+## Joining 6 months in one sheet
+```{r}
+#bind all the files in this path together
+file.list <- list.files(pattern='*.csv')
+
+# need an id-column with the file-names
+file.list <- setNames(file.list, file.list)
+
+#want only sheet 4, skip 1 row and name id column month
+bike <-map_df(file.list, function(x) read.csv(x))
+
+str(bike)
+```
+
+## Preparing columns for modeling
+```{r}
+
+bike$rideable_type <- factor(as.integer(factor(bike$rideable_type)))
+bike$start_station_id <- factor(bike$start_station_id)
+bike$end_station_id <- factor(bike$end_station_id)
+# make it to casual = 0, member= 1 
+bike$member_casual<-factor(ifelse(bike$member_casual=='casual',0,1))
+
+# split started_at/ ended_at to date column and time column
+# change start_date/end_date to date type
+bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M")
+bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M") 
+
+# covert date to date type to get the time differnce
+bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
+bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
+bike$Total_Time <- round(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")),2)
+
+# take only the day from the date
+bike$start_date <- as.Date(bike$started_at)
+bike$end_date <- as.Date(bike$ended_at)
+bike$days <- factor(format(bike$start_date, format = "%a"))
+
+# check the structure again
+str(bike)
+```
+
+
+
+# Topic 2: Linear Model for tatal riding time
+## Objective
+We are going to use the newly created variable 'Total_Time' and want to make a fitted and predictive model for the customer’s riding time. This is because:
+1). As we said before, COGO's sharing bike price is defined by the riding time instead of riding distance.
+2). If we can get some information from the model about what factors can affect customer's riding time and how did they affect, for example, which customer type has more impact on the riding time, or, which bike type has more impact on the riding time.....etc.
+3). If we can figure out the pattern of factors affecting riding time from our model, we can make some recommendations for the company's profit margin. 
+## Model structure
+Because we want to predict the customer's riding (in minutes), which is corresponding to the 'Total_Time' variable in the dataset, and it's an numerical data. Thus, Linear-Regression model become our first choice. We don't want to use Regression Tree because it always have the problem of overfitting, accompany with the riding data is always changing and it changes fast (maybe have multiple new records of ride in next minutes), so we don't want use a model that is easily overffiting. 
+After we confirm which type of model we use, we will decide the dependent (response) variable and independent (regressors) variable of the model：We said the response variable is 'Total_Time' above and its numerical variable. Then, for choosing regressors, the variable we choose for LM here is almost the same, which are variables: 'rideable_type', 'member_casual' and 'days'; 
+Except these variables above, for predicting the riding time, we believe the rider's starting time will also affected the riding time (for example, if I am starting at night, I may not want to spend so much time outside because it maybe unsafe, but if I am starting at afternoon, then maybe I will spend more time on sightseeing or something like that and won't concern about the safety problem)
+However, the variable for starting time 'started_time' is a character data type now, and it's describing each specific time, so we can't just convert this variable into factor type, or it will have thousands of categories. Thus, we decided to convert these started_times into numerical variables first and then create a new column to divide/categorize these time into 4 time intervals, which are Before_Dawn (00:00-06:00), Morning (06:00-13:00), Afternoon (13:00-18:00), and finally Night (18:00-00:00). 
+```{r}
+# Extract the 'Hours' only first, then change it to numeric variable
+bike$start_hour <- format(as.POSIXct(bike$started_at), format = "%H")
+bike$start_hour_num <- as.numeric(bike$start_hour)
+# Use 'summary(bike$start_hour_num)' to check if the min and max are 0 and 23
+
+# Divide the time into different categories/intervals
+bike$Time_Interval <- cut(bike$start_hour_num, c(0, 6, 12, 18, 23), c("Before dawn", "Morning", "Afternoon", "Night"), include.lowest=TRUE)
+#0am-6am : Morning (Factor 1)
+#6am-12pm : Morning (Factor 2)
+#12pm-18pm : Afternoon (Factor 3)
+#6pm-0am : Night (Factor 4)
+
+# Double check the structure to make sure if we do that successfully
+str(bike)
+```
+### Build multiple linear models for each time range
+```{r}
+
+bike_before_dawn <- subset(bike, bike$Time_Interval=='Morning')
+bike_morning <- subset(bike, bike$Time_Interval=='Morning')
+bike_afternoon <- subset(bike,bike$Time_Interval =='Afternoon')
+bike_night <- subset(bike, bike$Time_Interval=='Night')
+```
+
+```{r}
+lm_test1 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour_num, data=bike_before_dawn)
+summary(lm_test1)
+# 4% of R-Squared, really bad fitting
+```
+
+```{r}
+lm_test2 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour_num, data=bike_morning)
+summary(lm_test2)
+# 3% of R-Squared, really bad fitting
+```
+
+```{r}
+lm_test3 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour_num, data=bike_afternoon)
+summary(lm_test3)
+# 2% of R-Squared, really bad fitting
+```
+
+```{r}
+lm_test4 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour_num, data=bike_night)
+summary(lm_test4)
+# 2% of R-Squared, really bad fitting
+```
+All of the models are pretty bad fitting based on R-Squared
+Because these fittings are really bad, so we are going to do something to improve the models:  
+#### Normally Shaped check: 
+We need to make sure the dependent variable is (approximate) normal. We can check the distribution of our response 'Total_variable' by building the its histogram
+```{r}
+
+# Double check the 
+ggplot(data=bike, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for total riding time')
+
+```
+According to the distribution above, it's so right skewed and we can't use the variable with this distribution to build the linear regression. This may be a reason that we get a so bad fittings. Thus, we will try to exclude all the outliers and build the regression again
+```{r}
+
+library(ezids)
+
+bike_clean <- outlierKD2 (bike, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+print('Summary Statistic for cleaned membership time')
+summary(bike$Total_Time)
+
+# Double check the distribution 
+# ggplot(data=bike_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for total riding time')
+```
+Above we can see now the Total_Time's distribution is approximate normal, which is much better than before, and we can use it to build the linear model again later.
+#### Multicollinearity check: 
+According the information from previous Pre-Processing part, we had alraady checked that all variables are independent by VIF, but now because we added a new column/variable into our model, so we will just do the VIF check again
+```{r}
+library(car)
+vif(lm_test1)
+vif(lm_test2)
+vif(lm_test3)
+vif(lm_test4)
+```
+As we see, all the VIFs are less than 5, which is acceptable, so our current model don't have the model of multicollinearity.
+After we finished these checkings, then we can build these models again, and this time we also added the residual plots for each regression model
+### Build these model again
+```{r}
+
+bike_clean_before_dawn <- subset(bike_clean, Time_Interval=='Before dawn')
+bike_clean_morning <- subset(bike_clean, Time_Interval=='Morning')
+bike_clean_afternoon <- subset(bike_clean, Time_Interval =='Afternoon')
+bike_clean_night <- subset(bike_clean, Time_Interval=='Night')
+
+```
+#### Before dawn
+```{r}
+lm_test1 <- lm(formula = Total_Time ~ start_hour_num+rideable_type+member_casual+days, data=bike_clean_before_dawn)
+summary(lm_test1)
+plot(lm_test1)
+```
+#### Morning
+```{r}
+lm_test2 <- lm(formula = Total_Time ~ start_hour_num+rideable_type+member_casual+days, data=bike_clean_morning)
+summary(lm_test2)
+plot(lm_test2)
+```
+#### Afternoon 
+```{r}
+lm_test3 <- lm(formula = Total_Time ~ start_hour_num+rideable_type+member_casual+days, data=bike_clean_afternoon)
+summary(lm_test3)
+plot(lm_test3)
+```
+#### Night
+```{r}
+lm_test4 <- lm(formula = Total_Time ~ start_hour_num+rideable_type+member_casual+days, data=bike_clean_night)
+summary(lm_test4)
+plot(lm_test4)
+```
+The model are better after we remove the outliers and the R-Squared values are went up a little bit. For the model about predicting ('Before dawn' customer's riding time and) 'Monring' customer's riding time have relatively good fit, and we will try if we can make it better.  
+
+#### Improving 'Morning' model
+(originally about 15% R-squared)
+```{r}
+lm_test2 <- lm(formula = Total_Time ~ (start_hour_num+rideable_type+member_casual+days)^2, data=bike_clean_morning)
+summary(lm_test2)
+# plot(lm_test2)
+```
+## Final conclusion
+We added some interaction terms by using the 2-way interaction formula for the morning model, and we can see even though the R-Squared did increase, but still not enough to say it's a good fitting model. Moreover, the residual plots are not looking randomly scattered (for each time range model), so we can't say this is a good fitting model. 
+However, there are still have some significance coefficients, even thouh we don't have a good fitting, which are the starting hour, and the interaction terms of starting hour affected by electrical bike and the interaction terms of electrical bike affected by casual customers. 
+Thus, finally we have to make a conclusion and say we can't answer the smart question about predicting total riding time with the linear regression model.
+
+
+
+# Topic 3: Regression Tree
+## Objective
+Because we failed to use linear regression model to predict the customer's riding 'Total_Time', so we will try to use another supervised regression model to predict this quantitative response, which is the Regression Tree model
+## Growing the Tree
+```{r}
+library("rpart")
+library(rattle)
+
+treefitRpart <- rpart(log(Total_Time) ~ rideable_type + member_casual + days + start_hour_num, data=bike_clean_before_dawn)
+# + start_station_id + end_station_id
+# control = list(maxdepth = 8, cp=0.009) 
+# summary(treefitRpart)
+fancyRpartPlot(treefitRpart)
+```
+According to the Regression Tree model above, we can see that the 
+```{r}
+library("rpart")
+library(rattle)
+
+treefitRpart <- rpart(log(Total_Time) ~ rideable_type + member_casual + days + start_hour_num, data=bike_clean_morning)
+# + start_station_id + end_station_id
+# control = list(maxdepth = 8, cp=0.009) 
+# summary(treefitRpart)
+fancyRpartPlot(treefitRpart)
+```
+```{r}
+library("rpart")
+library(rattle)
+
+treefitRpart <- rpart(log(Total_Time) ~ rideable_type + member_casual + days + start_hour_num, data=bike_clean_afternoon)
+# + start_station_id + end_station_id
+# control = list(maxdepth = 8, cp=0.009) 
+# summary(treefitRpart)
+fancyRpartPlot(treefitRpart)
+```
+```{r}
+library("rpart")
+library(rattle)
+
+treefitRpart <- rpart(log(Total_Time) ~ rideable_type + member_casual + days + start_hour_num, data=bike_clean_night)
+# + start_station_id + end_station_id
+# control = list(maxdepth = 8, cp=0.009) 
+# summary(treefitRpart)
+fancyRpartPlot(treefitRpart)
+```
+## Final Conclusion 
+Thus, because we failed to predict the 'Total_Time' in both Linear model and Regression tree, so finally we have to make a conclusion and say we can't answer the smart question about predicting total riding time with this given dataset.
+
+
+
+
+
+
+
+
+### Train/Test Split
+```{r, results='hide'}
+#selecting the columns we want
+tree_want <- c('rideable_type', 'start_station_id', 'end_station_id', 'member_casual', 'days', 'start_hour_num', 'Time_Interval', 'Total_Time')
+tree_data_1 <- bike_clean[,(names(bike_clean) %in% tree_want)]
+
+#Delete all the NAs 
+tree_data <-na.omit(tree_data_1)
+tree_data %>% drop_na()
+
+#Make Total_Time to be the first column
+colnames(tree_data)
+tree_data <- tree_data %>%
+  select('Total_Time', everything())
+tree_data
+```
+
+```{r, results='hide'}
+set.seed(321)
+tree_samples <- sample(2, nrow(tree_data), replace=TRUE, prob=c(0.75, 0.25))
+
+tree_trainX <- tree_samples[tree_samples==1, 2:6]
+tree_testX <- tree_samples[tree_samples==2, 2:6]
+
+
+tree_trainY <- tree_samples[tree_samples==1, 1]
+tree_testY <- tree_samples[tree_samples==2, 1]
+```
