@@ -147,8 +147,14 @@ str(bike2)
 SMART Questions:
 
 1. How much time will the customer (Annual membership or Casual) ride the bike if travelling from a certain station to another or using a certain bike etc? 
-
 #----------------------- Chris Code start-----------------------------
+## Objective
+We are going to use the newly created variable 'Total_Time' and want to make a fitted and predictive model for the customer’s riding time. This is because:
+1). As we said before, COGO's sharing bike price is defined by the riding time instead of riding distance.
+2). If we can get some information from the model about what factors can affect customer's riding time and how did they affect, for example, which customer type has more impact on the riding time, or, which bike type has more impact on the riding time.....etc.
+3). If we can figure out the pattern of factors affecting riding time from our model, we can make some recommendations for the company's profit margin. 
+## Model structure
+### Subset to 4 datasets based on time range
 ```{r}
 "chris's dataset name <- data.frame(bike2)
 
