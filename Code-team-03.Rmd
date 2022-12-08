@@ -106,6 +106,21 @@ bike$startingm <- hour(res)*60 + minute(res)
 res <- hm(bike$end_time)# format to 'hours:minutes'
 bike$endingm <- hour(res)*60 + minute(res)
 
+# Extract the 'Hours' only first, then change it to numeric variable
+bike$start_hour <- format(as.POSIXct(bike$started_at), format = "%H")
+bike$start_hour <- as.numeric(bike$start_hour)
+# Use 'summary(bike$start_hour_num)' to check if the min and max are 0 and 23
+
+# Divide the time into different categories/intervals
+bike$Time_range <- cut(bike$start_hour, c(0, 6, 12, 18, 23), c("Before dawn", "Morning", "Afternoon", "Night"), include.lowest=TRUE)
+#0am-6am : Morning (Factor 1)
+#6am-12pm : Morning (Factor 2)
+#12pm-18pm : Afternoon (Factor 3)
+#6pm-0am : Night (Factor 4)
+
+# Double check the structure to make sure if we do that successfully
+str(bike)
+
 print(head(bike))
 
 str(bike)
@@ -117,7 +132,7 @@ str(bike)
 
 #selecting the features needed for the model
 
-selected_features <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','endingm','days')
+selected_features <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','endingm','days', 'start_hour', 'Time_range')
 
 bike2 <- bike[,(names(bike) %in% selected_features)]
 
