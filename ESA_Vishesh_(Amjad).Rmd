@@ -219,7 +219,6 @@ expcoeff
 # See how well the model is doing by running suveral tests:
 ## Deviance tests
 
-
 ##AUC of the model
 ```{r,results='markup'}
 prob=predict(Bike_Type_Logit, type = "response")
