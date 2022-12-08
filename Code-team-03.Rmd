@@ -205,7 +205,7 @@ summary(lm_testings)
 plot(lm_testings)
 ```
 The model are better after we remove the outliers and the R-Squared values are went up a little bit. However, most of the models are still not having a good fitting , so we will keep checking other assumptions of linear model
-## Linearity
+## Linearity check
 Let's check the scatter plot between start hour and the total time: 
 ```{r}
 library(ggplot2)
