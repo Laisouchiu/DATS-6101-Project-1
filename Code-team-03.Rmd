@@ -261,7 +261,11 @@ lm_test2_interactions <- lm(formula = Total_Time ~ (start_hour+rideable_type+mem
 summary(lm_test2_interactions)
 # plot(lm_test2_interactions)
 ```
-
+## Final conclusion
+We added some interaction terms by using the 2-way interaction formula for the morning model, and we can see even though the R-Squared did increase, but still not enough to say it's a good fitting model. Moreover, the residual plots are not looking randomly scattered (for each time range model), so we can't say this is a good fitting model. 
+However, there are still have some significance coefficients, even thouh we don't have a good fitting, which are the starting hour, and the interaction terms of starting hour affected by electrical bike and the interaction terms of electrical bike affected by casual customers. 
+(Include breif regression tree description in here?)
+Thus, finally we have to make a conclusion and say we can't answer the smart question about predicting total riding time with the linear regression model (or with the given dataset).
 
 #----------------------- Chris Code End-----------------------------
 
