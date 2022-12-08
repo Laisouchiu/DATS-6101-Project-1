@@ -218,6 +218,41 @@ vif(lm_test4)
 ```
 As we see, all the VIFs are less than 5, which is acceptable, so our current model don't have the model of multicollinearity.
 After we finished these checkings, then we can build these models again, and this time we also added the residual plots for each regression model
+## Build these model again
+### Subset on the dataset without outliers
+```{r}
+
+bike_clean_before_dawn <- subset(bike_clean, Time_range=='Before dawn')
+bike_clean_morning <- subset(bike_clean, Time_range=='Morning')
+bike_clean_afternoon <- subset(bike_clean, Time_range =='Afternoon')
+bike_clean_night <- subset(bike_clean, Time_range=='Night')
+
+```
+### Build those 4 models again with the normally distributed response
+#### Before dawn
+```{r}
+lm_test1 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean_before_dawn)
+summary(lm_test1)
+#plot(lm_test1)
+```
+#### Morning
+```{r}
+lm_test2 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean_morning)
+summary(lm_test2)
+#plot(lm_test2)
+```
+#### Afternoon 
+```{r}
+lm_test3 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean_afternoon)
+summary(lm_test3)
+#plot(lm_test3)
+```
+#### Night
+```{r}
+lm_test4 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean_night)
+summary(lm_test4)
+#plot(lm_test4)
+```
 
 #----------------------- Chris Code End-----------------------------
 
