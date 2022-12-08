@@ -157,10 +157,6 @@ We are going to use the newly created variable 'Total_Time' and want to make a f
 ```{r}
 bike_lm <- data.frame(bike2)
 
-bike_before_dawn <- subset(bike_lm, Time_range=='Before dawn')
-bike_morning <- subset(bike_lm, Time_range=='Morning')
-bike_afternoon <- subset(bike_lm, Time_range =='Afternoon')
-bike_night <- subset(bike_lm, Time_range=='Night')
 ```
 
 ```{r}
@@ -168,31 +164,20 @@ lm_testings <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+
 summary(lm_testings)
 plot(lm_testings)
 ```
-### Build 4 linear models for each time range and check their fittings first
-```{r}
-lm_test1 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour, data=bike_before_dawn)
-summary(lm_test1)
 
-```
-Only 4% of R-Squared, really bad fitting
-```{r}
-lm_test2 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour, data=bike_morning)
-summary(lm_test2)
-```
-Only 8% of R-Squared, really bad fitting
-```{r}
-lm_test3 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour, data=bike_afternoon)
-summary(lm_test3)
-```
-Only 5% of R-Squared, really bad fitting
-```{r}
-lm_test4 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour, data=bike_night)
-summary(lm_test4)
-```
-Only 2% of R-Squared, really bad fitting
 ## Model Improvement:
-All of the models are pretty bad fitting based on R-Squared
-Because these fittings are really bad, so we are going to do something to improve the models: 
+The model is pretty bad fitting based on R-Squared
+Because these fittings are really bad, so we are going to do something to improve the models:
+### Multicollinearity check: 
+According the information from previous Pre-Processing part, we had alraady checked that all variables are independent by VIF, but now because we added a new column/variable into our model, so we will just do the VIF check again
+```{r}
+library(car)
+vif(lm_test1)
+vif(lm_test2)
+vif(lm_test3)
+vif(lm_test4)
+```
+As we see, all the VIFs are less than 5, which is acceptable, so our current model don't have the model of multicollinearity.
 ### Normally Shaped check:
 We need to make sure the dependent variable is (approximate) normal. We can check the distribution of our response 'Total_variable' by building the its histogram
 ```{r}
@@ -213,19 +198,27 @@ summary(bike_lm$Total_Time)
 # ggplot(data=bike_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for total riding time')
 ```
 Above we can see now the Total_Time's distribution is approximate normal, which is much better than before, and we can use it to build the linear model again later.
-### Multicollinearity check: 
-According the information from previous Pre-Processing part, we had alraady checked that all variables are independent by VIF, but now because we added a new column/variable into our model, so we will just do the VIF check again
+## Linearity
 ```{r}
-library(car)
-vif(lm_test1)
-vif(lm_test2)
-vif(lm_test3)
-vif(lm_test4)
+library(ggplot2)
+
+qplot (x=start_hour, y=Total_Time, data=bike_lm, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (General)') 
+
+qplot (x=Total_Time, y=start_hour, data=bike_before_dawn, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Before dawn)') 
+qplot (x=Total_Time, y=start_hour, data=bike_morning, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Morning)') 
+qplot (x=start_hour, y=Total_Time, data=bike_afternoon, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Afternoon)') 
+qplot (x=start_hour, y=Total_Time, data=bike_night, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Night)') 
+
 ```
-As we see, all the VIFs are less than 5, which is acceptable, so our current model don't have the model of multicollinearity.
-After we finished these checkings, then we can build these models again, and this time we also added the residual plots for each regression model
-## Build these model again
 ### Subset on the dataset without outliers
+```{r}
+lm_testings2 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean)
+summary(lm_testings2)
+plot(lm_testings2)
+```
+The model are better after we remove the outliers and the R-Squared values are went up a little bit. However, most of the models are still not having a good fitting , so we will keep checking other assumptions of linear model
+### Linearity Check
+
 ```{r}
 
 bike_clean_before_dawn <- subset(bike_clean, Time_range=='Before dawn')
@@ -234,37 +227,6 @@ bike_clean_afternoon <- subset(bike_clean, Time_range =='Afternoon')
 bike_clean_night <- subset(bike_clean, Time_range=='Night')
 
 ```
-### Build those 4 models again with the normally distributed response
-```{r}
-lm_testings2 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean)
-summary(lm_testings2)
-plot(lm_testings2)
-```
-#### Before dawn
-```{r}
-lm_test1 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean_before_dawn)
-summary(lm_test1)
-#plot(lm_test1)
-```
-#### Morning
-```{r}
-lm_test2 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean_morning)
-summary(lm_test2)
-#plot(lm_test2)
-```
-#### Afternoon 
-```{r}
-lm_test3 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean_afternoon)
-summary(lm_test3)
-#plot(lm_test3)
-```
-#### Night
-```{r}
-lm_test4 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean_night)
-summary(lm_test4)
-#plot(lm_test4)
-```
-The models are better after we remove the outliers and the R-Squared values are went up a little bit. However, most of the models are still not having a good fitting , so we will keep focus on improving the model that has relatively good fit.
 ### Improving the model that predict the total riding time with customers who start riding on the morning time
 For the model about predicting 'Morning' customer's riding time have relatively good fit, and we will try if we can keep making it better by adding interaction terms.
 ```{r}
