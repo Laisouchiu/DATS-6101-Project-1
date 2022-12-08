@@ -255,7 +255,13 @@ summary(lm_test4)
 ```
 The models are better after we remove the outliers and the R-Squared values are went up a little bit. However, most of the models are still not having a good fitting , so we will keep focus on improving the model that has relatively good fit.
 ### Improving the model that predict the total riding time with customers who start riding on the morning time
-For the model about predicting 'Morning' customer's riding time have relatively good fit, and we will try if we can keep making it better.
+For the model about predicting 'Morning' customer's riding time have relatively good fit, and we will try if we can keep making it better by adding interaction terms.
+```{r}
+lm_test2_interactions <- lm(formula = Total_Time ~ (start_hour+rideable_type+member_casual+days)^2, data=bike_clean_morning)
+summary(lm_test2_interactions)
+# plot(lm_test2_interactions)
+```
+
 
 #----------------------- Chris Code End-----------------------------
 
