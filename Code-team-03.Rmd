@@ -160,12 +160,13 @@ bike_lm <- data.frame(bike2)
 ```
 
 ```{r}
-lm_testings <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_lm)
-summary(lm_testings)
-plot(lm_testings)
+bike_lm1 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_lm)
+summary(bike_lm1)
+plot(bike_lm1)
 ```
+According to the model, bad fittings
 
-## Model Improvement:
+## Model Assumptions Checking & Model Improvement:
 The model is pretty bad fitting based on R-Squared
 Because these fittings are really bad, so we are going to do something to improve the models:
 ### Multicollinearity check: 
@@ -197,28 +198,22 @@ summary(bike_lm$Total_Time)
 # Double check the distribution 
 # ggplot(data=bike_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for total riding time')
 ```
-Above we can see now the Total_Time's distribution is approximate normal, which is much better than before, and we can use it to build the linear model again later.
+Above we can see now the Total_Time's distribution is approximate normal, which is much better than before, and we can use it to build the linear model again.
+```{r}
+lm_testings <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_lm)
+summary(lm_testings)
+plot(lm_testings)
+```
+The model are better after we remove the outliers and the R-Squared values are went up a little bit. However, most of the models are still not having a good fitting , so we will keep checking other assumptions of linear model
 ## Linearity
+Let's check the scatter plot between start hour and the total time: 
 ```{r}
 library(ggplot2)
 
 qplot (x=start_hour, y=Total_Time, data=bike_lm, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (General)') 
-
-qplot (x=Total_Time, y=start_hour, data=bike_before_dawn, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Before dawn)') 
-qplot (x=Total_Time, y=start_hour, data=bike_morning, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Morning)') 
-qplot (x=start_hour, y=Total_Time, data=bike_afternoon, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Afternoon)') 
-qplot (x=start_hour, y=Total_Time, data=bike_night, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Night)') 
-
 ```
-### Subset on the dataset without outliers
-```{r}
-lm_testings2 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean)
-summary(lm_testings2)
-plot(lm_testings2)
-```
-The model are better after we remove the outliers and the R-Squared values are went up a little bit. However, most of the models are still not having a good fitting , so we will keep checking other assumptions of linear model
-### Linearity Check
-
+We can see there's totally no linear relationship with these two variable, but we can keep checking that if we divided the starting hour into different time range
+We subsetted the start_hour into 4 different categories: Before dawn，Morning, Afternoon and Night
 ```{r}
 
 bike_clean_before_dawn <- subset(bike_clean, Time_range=='Before dawn')
@@ -227,18 +222,19 @@ bike_clean_afternoon <- subset(bike_clean, Time_range =='Afternoon')
 bike_clean_night <- subset(bike_clean, Time_range=='Night')
 
 ```
-### Improving the model that predict the total riding time with customers who start riding on the morning time
-For the model about predicting 'Morning' customer's riding time have relatively good fit, and we will try if we can keep making it better by adding interaction terms.
+Then, let's check the scatter plot of the total riding time and starting hour within each different time range
 ```{r}
-lm_test2_interactions <- lm(formula = Total_Time ~ (start_hour+rideable_type+member_casual+days)^2, data=bike_clean_morning)
-summary(lm_test2_interactions)
-# plot(lm_test2_interactions)
+
+qplot (x=Total_Time, y=start_hour, data=bike_before_dawn, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Before dawn)') 
+qplot (x=Total_Time, y=start_hour, data=bike_morning, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Morning)') 
+qplot (x=Total_Time, y=start_hour, data=bike_afternoon, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Afternoon)') 
+qplot (x=Total_Time, y=start_hour, data=bike_night, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Night)') 
 ```
+We see there's still not any linear relationship between total time and starting hour. 
 ## Final conclusion
-We added some interaction terms by using the 2-way interaction formula for the morning model, and we can see even though the R-Squared did increase, but still not enough to say it's a good fitting model. Moreover, the residual plots are not looking randomly scattered (for each time range model), so we can't say this is a good fitting model. 
 However, there are still have some significance coefficients, even thouh we don't have a good fitting, which are the starting hour, and the interaction terms of starting hour affected by electrical bike and the interaction terms of electrical bike affected by casual customers. 
-(Include breif regression tree description in here?)
-Thus, finally we have to make a conclusion and say we can't answer the smart question about predicting total riding time with the linear regression model (or with the given dataset).
+(Include brief regression tree description in here?)
+Thus, finally we have to make a conclusion and say we can't answer the smart question about predicting total riding time with with the given dataset by linear regression model.
 
 #----------------------- Chris Code End-----------------------------
 
