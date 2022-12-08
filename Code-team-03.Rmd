@@ -231,7 +231,7 @@ qplot (x=Total_Time, y=start_hour, data=bike_afternoon, xlab='Start_hour', ylab=
 qplot (x=Total_Time, y=start_hour, data=bike_night, xlab='Start_hour', ylab='Total_time', main='scatter-plot Total_Time vs start_hour (Night)') 
 ```
 We see there's still not any linear relationship between total time and starting hour. 
-## Final conclusion
+## Final Conclusion
 However, there are still have some significance coefficients, even thouh we don't have a good fitting, which are the starting hour, and the interaction terms of starting hour affected by electrical bike and the interaction terms of electrical bike affected by casual customers. 
 (Include brief regression tree description in here?)
 Thus, finally we have to make a conclusion and say we can't answer the smart question about predicting total riding time with with the given dataset by linear regression model.
