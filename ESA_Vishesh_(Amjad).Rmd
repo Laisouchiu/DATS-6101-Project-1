@@ -227,6 +227,7 @@ auc(e) # area-under-curve
 plot(e)
 ```
 
+
 ```{r,results='markup'}
 
 proc=predict(Bike_Type_Logit, type = "response", newdata = Rt_test_X)
@@ -242,6 +243,7 @@ plot(roc)
 print(confusionMatrix(proc, Rt_test_y))
 
 ```
+
 
 ## McFadden
 ```{r}
