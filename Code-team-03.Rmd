@@ -162,6 +162,12 @@ bike_morning <- subset(bike_lm, Time_range=='Morning')
 bike_afternoon <- subset(bike_lm, Time_range =='Afternoon')
 bike_night <- subset(bike_lm, Time_range=='Night')
 ```
+
+```{r}
+lm_testings <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_lm)
+summary(lm_testings)
+plot(lm_testings)
+```
 ### Build 4 linear models for each time range and check their fittings first
 ```{r}
 lm_test1 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hour, data=bike_before_dawn)
@@ -229,6 +235,11 @@ bike_clean_night <- subset(bike_clean, Time_range=='Night')
 
 ```
 ### Build those 4 models again with the normally distributed response
+```{r}
+lm_testings2 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean)
+summary(lm_testings2)
+plot(lm_testings2)
+```
 #### Before dawn
 ```{r}
 lm_test1 <- lm(formula = Total_Time ~ start_hour+rideable_type+member_casual+days, data=bike_clean_before_dawn)
