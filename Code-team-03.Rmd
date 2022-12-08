@@ -216,7 +216,8 @@ vif(lm_test2)
 vif(lm_test3)
 vif(lm_test4)
 ```
-
+As we see, all the VIFs are less than 5, which is acceptable, so our current model don't have the model of multicollinearity.
+After we finished these checkings, then we can build these models again, and this time we also added the residual plots for each regression model
 
 #----------------------- Chris Code End-----------------------------
 
