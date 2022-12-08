@@ -187,8 +187,35 @@ Only 2% of R-Squared, really bad fitting
 ## Model Improvement:
 All of the models are pretty bad fitting based on R-Squared
 Because these fittings are really bad, so we are going to do something to improve the models: 
-### Normally Shaped check: 
+### Normally Shaped check:
+We need to make sure the dependent variable is (approximate) normal. We can check the distribution of our response 'Total_variable' by building the its histogram
+```{r}
 
+# Double check the Total_Time distribution
+ggplot(data=bike_lm, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for total riding time')
+```
+According to the distribution above, it's so right skewed and we can't use the variable with this distribution to build the linear regression. This may be a reason that we get a so bad fittings. Thus, we will try to exclude all the outliers and build the regression again to see if we can improve the model's fitting. 
+```{r}
+
+library(ezids)
+
+bike_clean <- outlierKD2 (bike_lm, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+print('Summary Statistic for cleaned membership time')
+summary(bike_lm$Total_Time)
+
+# Double check the distribution 
+# ggplot(data=bike_clean, mapping = aes(Total_Time))+geom_histogram(col='red', fill='blue')+labs(title='Histogram for total riding time')
+```
+Above we can see now the Total_Time's distribution is approximate normal, which is much better than before, and we can use it to build the linear model again later.
+### Multicollinearity check: 
+According the information from previous Pre-Processing part, we had alraady checked that all variables are independent by VIF, but now because we added a new column/variable into our model, so we will just do the VIF check again
+```{r}
+library(car)
+vif(lm_test1)
+vif(lm_test2)
+vif(lm_test3)
+vif(lm_test4)
+```
 
 
 #----------------------- Chris Code End-----------------------------
