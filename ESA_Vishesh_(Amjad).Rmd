@@ -219,7 +219,6 @@ expcoeff
 # See how well the model is doing by running suveral tests:
 ## Deviance tests
 
-## Linear Model
 
 ##AUC of the model
 ```{r,results='markup'}
