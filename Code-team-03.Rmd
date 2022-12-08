@@ -184,8 +184,12 @@ lm_test4 <- lm(formula = Total_Time ~ rideable_type+member_casual+days+start_hou
 summary(lm_test4)
 ```
 Only 2% of R-Squared, really bad fitting
+## Model Improvement:
 All of the models are pretty bad fitting based on R-Squared
 Because these fittings are really bad, so we are going to do something to improve the models: 
+### Normally Shaped check: 
+
+
 
 #----------------------- Chris Code End-----------------------------
 
