@@ -156,8 +156,12 @@ We are going to use the newly created variable 'Total_Time' and want to make a f
 ## Model structure
 ### Subset to 4 datasets based on time range
 ```{r}
-"chris's dataset name <- data.frame(bike2)
+bike_lm <- data.frame(bike2)
 
+bike_before_dawn <- subset(bike_lm, bike$Time_Interval=='Morning')
+bike_morning <- subset(bike_lm, bike$Time_Interval=='Morning')
+bike_afternoon <- subset(bike_lm,bike$Time_Interval =='Afternoon')
+bike_night <- subset(bike_lm, bike$Time_Interval=='Night')
 ```
 
 #----------------------- Chris Code End-----------------------------
