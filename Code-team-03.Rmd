@@ -200,7 +200,7 @@ Above we can see now the Total_Time's distribution is approximate normal, which 
 ```{r}
 bike_lm2 <- lm(formula = Total_Time ~ (start_hour+rideable_type+member_casual+days)^2, data=bike_clean)
 summary(bike_lm2)
-plots(bike_lm2)
+plot(bike_lm2)
 
 ```
                
