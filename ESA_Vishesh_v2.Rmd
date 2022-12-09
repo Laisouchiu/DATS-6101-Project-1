@@ -113,7 +113,7 @@ df2 <- bike[,(names(bike) %in% want)]
 
 #Delete the na 
 df<-na.omit(df2)
-
+df %>% drop_na()
 
 #make member_casual to be the first column
 colnames(df)
@@ -161,16 +161,20 @@ chisq.test(Chi_rt4)
 #anova_rt3 = aov(rideable_type ~ endingm, data = df_rt)
 #summary(anova_rt3)
 ```
+
+
 ```{r}
 
 set.seed(123)
-stratified1 = (df_rt %>% select(rideable_type, Total_Time, member_casual, start_station_id, startingm, endingm, days))
+stratified1 = (df_rt %>% select(rideable_type, Total_Time, member_casual, start_station_id, start_station_id, startingm, endingm, days))
 stratified <- stratified1 %>%
     group_by(rideable_type) %>%
     sample_n(size=5000)
 
 #str(stratified)
 df_rt = data.frame(stratified)
+
+df_rt %>% drop_na()
 
 #df_rt_check <-subset(df_rt, end_station_id == 0)
 
@@ -202,6 +206,8 @@ df_rt
 #deleted start_station_id and Wed coz the model says it is not much predictable 
 Bike_Type_Logit <- glm(rideable_type ~ Total_Time + member_casual + start_station_id + endingm, data = as.data.frame(Rt_train_X), family = "binomial", na.action=na.omit)
 summary(Bike_Type_Logit)
+
+predict()
 ```
 
 ```{r}
@@ -220,22 +226,15 @@ prob=predict(Bike_Type_Logit, type = "response")
 e <- roc(Rt_train_y~prob)
 auc(e) # area-under-curve 
 plot(e)
+```
 
-
-#prob=predict(Bike_Type_Logit, type = "response", data = Rt_test_X)
-#e <- roc(Rt_test_y ~ prob, data = cbind(Rt_test_X, Rt_test_y))
-#auc(e) # area-under-curve 
-#plot(e)
-
-#prob=predict(Bike_Type_Logit, type = "response", data = Rt_test_X)
-#e <- roc(Rt_test_y~prob, data = cbind(Rt_test_X, Rt_test_y))
-#auc(e) # area-under-curve 
-#plot(e)
+```{r,results='markup'}
 
 proc=predict(Bike_Type_Logit, type = "response", newdata = Rt_test_X)
 Rt_test_X$proc=proc
 roc <- roc(rideable_type~proc, data= Rt_test_X)
 print(roc)
+plot(roc)
 
 ```
 
