@@ -14,6 +14,10 @@ library(dplyr)
 library(tidyr)
 library(caret)
 library(ggplot2)
+library(class)
+library(gmodels)
+library(FNN)
+
 ```
 
 
@@ -113,6 +117,7 @@ df2 <- bike[,(names(bike) %in% want)]
 
 #Delete the na 
 df<-na.omit(df2)
+df %>% drop_na()
 
 
 #make member_casual to be the first column
@@ -176,6 +181,24 @@ df_rt = data.frame(stratified)
 
 ```
 
+```{r}
+
+df_rt_knn <- as.data.frame(df_rt[-c(7)])
+df_rt_knn$rideable_type <- as.numeric(df_rt$rideable_type)
+df_rt_knn$Total_Time <- as.numeric(df_rt$Total_Time)
+df_rt_knn$member_casual <- as.numeric(df_rt$member_casual)
+df_rt_knn$start_station_id <- as.numeric(df_rt$start_station_id)
+df_rt_knn$startingm <- as.numeric(df_rt$startingm)
+df_rt_knn$endingm <- as.numeric(df_rt$endingm)
+
+df_rt_knn
+
+
+
+
+
+```
+
 
 #Test and train split
 ```{r}
@@ -184,8 +207,8 @@ set.seed(333)
 df_sample_rt <- sample(2, nrow(df_rt), replace=TRUE, prob=c(0.80, 0.20))
 
 
-Rt_train_X <- df_rt[df_sample_rt==1, 1:7]
-Rt_test_X <- df_rt[df_sample_rt==2, 1:7]
+Rt_train_X <- df_rt[df_sample_rt==1, 2:7]
+Rt_test_X <- df_rt[df_sample_rt==2, 2:7]
 
 
 Rt_train_y <- df_rt[df_sample_rt==1, 1]
@@ -220,23 +243,14 @@ prob=predict(Bike_Type_Logit, type = "response")
 e <- roc(Rt_train_y~prob)
 auc(e) # area-under-curve 
 plot(e)
+```
 
-
-#prob=predict(Bike_Type_Logit, type = "response", data = Rt_test_X)
-#e <- roc(Rt_test_y ~ prob, data = cbind(Rt_test_X, Rt_test_y))
-#auc(e) # area-under-curve 
-#plot(e)
-
-#prob=predict(Bike_Type_Logit, type = "response", data = Rt_test_X)
-#e <- roc(Rt_test_y~prob, data = cbind(Rt_test_X, Rt_test_y))
-#auc(e) # area-under-curve 
-#plot(e)
-
+```{r,results='markup'}
 proc=predict(Bike_Type_Logit, type = "response", newdata = Rt_test_X)
 Rt_test_X$proc=proc
 roc <- roc(rideable_type~proc, data= Rt_test_X)
 print(roc)
-
+plot(e)
 ```
 
 ```{r}
@@ -323,7 +337,7 @@ format(100*(crossTable4[1,1]+crossTable4[2,2])/sum(crossTable4), digits=4)
 ```
 ```{r}
 
-ggplot(data = d , mapping = aes(x = defult2, y = test_y)) +
+ggplot(data = df_rt , mapping = aes(x = defult2, y = test_y)) +
   geom_tile(aes(fill = Freq), colour = "white") +
   geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
   scale_fill_gradient(low = "#98c1d9", high = "#8f2d56") +
@@ -332,5 +346,80 @@ ggplot(data = d , mapping = aes(x = defult2, y = test_y)) +
   labs(title = "Confution Matrix with Cutoff at 0.04")+
   xlab( "predected")+
   ylab( "original")
+
+```
+
+
+#------ KNN-----
+
+#Rt_train_X <- df_rt[df_sample_rt==1, 2:7]
+#Rt_test_X <- df_rt[df_sample_rt==2, 2:7]
+#Rt_train_y <- df_rt[df_sample_rt==1, 1]
+#Rt_test_y <- df_rt[df_sample_rt==2, 1]
+
+
+```{r}
+
+scaleddf <- as.data.frame(scale(df_rt_knn[2:6], center = TRUE, scale = TRUE))
+set.seed(1000)
+df_sample_rt <- sample(2, nrow(df_rt_knn), replace=TRUE, prob=c(0.80, 0.20))
+
+
+DF_Rt_train_X <- df_rt_knn[df_sample_rt==1, 2:6]
+DF_Rt_test_X <- df_rt_knn[df_sample_rt==2, 2:6]
+
+
+DF_Rt_train_y <- df_rt_knn[df_sample_rt==1, 1]
+DF_Rt_test_y <- df_rt_knn[df_sample_rt==2, 1]
+
+df_rt_knn
+
+
+```
+
+
+```{r}
+
+knn1 <- knn(train=DF_Rt_train_X, test=DF_Rt_test_X, cl=DF_Rt_train_y, k=5)
+#ACC.5=100 * sum(nasa_test.labels == knn.5)/NROW(nasa_test.labels)
+#paste0("Accuracy = ", ACC.5)
+#print(confusionMatrix(knn.5, as.factor(nasa_test.labels) ))
+
+```
+
+ResultDf = data.frame( k=numeric(0), Total.Accuracy= numeric(0), row.names = NULL )
+
+for (kval in seq(11,50,2)) {
+  nasa_pred <- knn(train = nasa_train, test = nasa_test, cl=nasa_train.labels, k=kval)
+  #NASA_PREDCross = CrossTable(nasa_test.labels, nasa_pred, prop.chisq = FALSE)
+  cm = confusionMatrix(nasa_pred, as.factor(nasa_test.labels) ) # from caret library
+  cmaccu = cm$overall['Accuracy']
+  cmt = data.frame(k=kval, Total.Accuracy = cmaccu, row.names = NULL ) # initialize a row of the metrics 
+  ResultDf = rbind(ResultDf, cmt)
+}
+xkabledply(ResultDf, "Total Accuracy Summary:")
+
+```
+
+
+```{r}
+
+knn.5 <- knn(train=Rt_train_y, test=Rt_test_X, cl=Rt_train_y, k=5)
+ACC.5=100 * sum(Rt_test_X == knn.5)/NROW(Rt_test_X)
+paste0("Accuracy = ", ACC.5)
+print(confusionMatrix(knn.5, as.factor(Rt_test_X) ))
+
+
+ResultDf = data.frame( k=numeric(0), Total.Accuracy= numeric(0), row.names = NULL )
+
+for (kval in seq(11,50,2)) {
+  nasa_pred <- knn(train = Rt_train_y, test = Rt_test_X, cl=Rt_train_y, k=kval)
+  #NASA_PREDCross = CrossTable(nasa_test.labels, nasa_pred, prop.chisq = FALSE)
+  cm = confusionMatrix(nasa_pred, as.factor(Rt_test_X) ) # from caret library
+  cmaccu = cm$overall['Accuracy']
+  cmt = data.frame(k=kval, Total.Accuracy = cmaccu, row.names = NULL ) # initialize a row of the metrics 
+  ResultDf = rbind(ResultDf, cmt)
+}
+xkabledply(ResultDf, "Total Accuracy Summary:")
 
 ```
