@@ -194,9 +194,6 @@ df_rt_knn$endingm <- as.numeric(df_rt$endingm)
 df_rt_knn
 
 
-
-
-
 ```
 
 
