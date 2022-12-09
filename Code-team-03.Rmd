@@ -147,7 +147,7 @@ str(bike2)
 SMART Questions:
 
 1. How much time will the customer (Annual membership or Casual) ride the bike if travelling from a certain station to another or using a certain bike etc? 
-#----------------------- Chris Code start-----------------------------
+
 ## Objective
 We are going to use the newly created variable 'Total_Time' and want to make a fitted and predictive model for the customer’s riding time. This is because:
 1). As we said before, COGO's sharing bike price is defined by the riding time instead of riding distance.
@@ -235,8 +235,6 @@ We see there's still not any linear relationship between total time and starting
 However, there are still have some significance coefficients, even thouh we don't have a good fitting, which are the starting hour, and the interaction terms of starting hour affected by electrical bike and the interaction terms of electrical bike affected by casual customers. 
 (Include brief regression tree description in here?)
 Thus, finally we have to make a conclusion and say we can't answer the smart question about predicting total riding time with with the given dataset by linear regression model.
-
-#----------------------- Chris Code End-----------------------------
 
 2. Which Bike type (Electric or Manual) will the customer (Annual membership or Casual) use if travelling from a certain station to another/while using a certain bike type etc? 
 
@@ -328,17 +326,10 @@ plot(b)
 
 ```
 
-## McFadden
-```{r, results='markup'}
-
-library(pscl)
-pR2(Bike_Type_Logit)
-
-```
-
 
 ### Akaike Information Criterion (AIC)
 ```{r, results='markup'}
+
 
 AIC(Bike_Type_Logit)
 
@@ -348,7 +339,7 @@ AIC(Bike_Type_Logit)
 ## At 0.5 cut
 ```{r, results='markup'}
 
-logitpredict.5 <- predict(Bike_Type_Logit, newdata = bike_RT_LR_test_X, type = "response") > 0.55
+logitpredict.5 <- predict(Bike_Type_Logit, newdata = bike_RT_LR_test_X, type = "response") > 0.50
 
 defult <- ifelse(logitpredict.5 =="TRUE", 1, 0)
 crossTable = table(defult,bike_RT_LR_test_Y)
@@ -381,7 +372,7 @@ format(100*(crossTable[1,1]+crossTable[2,2])/sum(crossTable), digits=4)
 ## At 0.4 cut
 ```{r, results='markup'}
 
-logitpredict.4 <- predict(Bike_Type_Logit, newdata = bike_RT_LR_test_X, type = "response") > 0.6
+logitpredict.4 <- predict(Bike_Type_Logit, newdata = bike_RT_LR_test_X, type = "response") > 0.4
 defult2 <- ifelse(logitpredict.4 =="TRUE", 1, 0)
 crossTable4 = table(defult2,bike_RT_LR_test_Y)
 d <- as.data.frame(crossTable4)
@@ -476,7 +467,7 @@ df_rt_knn
 ```{r, results='markup'}
 
 
-knn1 <- knn(train=DF_Rt_train_X, test=DF_Rt_test_X, cl=DF_Rt_train_y, k=5)
+knn1 <- knn(train=DF_Rt_train_X, test=DF_Rt_test_X, cl=DF_Rt_train_y, k=3)
 
 ```
 
@@ -568,8 +559,10 @@ for (kval in 4:11) {
 ```
 
 
-```{r, results='markup'}
+```{r}
+
 print(ResultDf, "Total Accuracy Summary")
+
 ```
 2. What type of customer (Annual membership or Casual) will travel from a certain station to another, while using a particular bike?
 
@@ -593,21 +586,6 @@ df <- df %>%
 
 ```
 
-# Checking for unbalanced data
-```{r, results='markup'}
-
-bike_RT_LR%>%group_by(rideable_type)%>%
-  summarise(count = n())
-
-bike_RT_LR %>% count(rideable_type)
-ggplot(bike_RT_LR, aes(rideable_type, fill = rideable_type))+
-  geom_bar()+
-  scale_fill_brewer(palette = "BuPu")+
-  guides(fill="none")+
-  labs(title = "User bike types", x= "bike types")+
-  theme_classic()
-
-```
 
 # Check if we have unbalanced data
 ```{r}
@@ -621,16 +599,6 @@ ggplot(df, aes(member_casual, fill = member_casual))+
   guides(fill="none")+
   labs(title = "User membersip types", x= "types of memebership")+
   theme_classic()
-```
-
-```{r}
-# Correlation matrix
-
-```
-
-```{r}
-# Multicollinearitly 
-
 ```
 
 # scale and devide the data
@@ -699,14 +667,9 @@ proc=predict(customerLogit, type = "response", newdata = test_X)
 test_X$proc=proc
 roc <- roc(test_y~proc)
 print(roc)
+plot(roc)
 
 ```
-## McFadden
-```{r}
-library(pscl)
-pR2(customerLogit)
-```
-the McFadden is 1.877608e-01 
 
 ### Akaike Information Criterion (AIC)
 ```{r}
@@ -771,42 +734,5 @@ ggplot(data = d , mapping = aes(x = defult2, y = test_y)) +
   labs(title = "Confution Matrix with Cutoff at 0.04")+
   xlab( "predected")+
   ylab( "original")
-
-```
-
-
-# Topic2
-## Step1: 
-```{r}
-
-```
-
-## Step2: 
-```{r}
-
-```
-
-## Step3: 
-```{r}
-
-```
-
-## Step4: 
-```{r}
-
-```
-
-## Step5: 
-```{r}
-
-```
-
-## Step6: 
-```{r}
-
-```
-
-## Step7: 
-```{r}
 
 ```
