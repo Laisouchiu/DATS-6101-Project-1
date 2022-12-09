@@ -195,6 +195,10 @@ plot(roc)
 ```{r}
 
 
+#Bike_Type_Logit <- glm(train_y ~ start_station_id+ end_station_id+Total_Time+member_casual+ startingm*days + endingm , data = train_X, family = "binomial")
+
+glm1 <- data.frame(start_station_id= "15", end_station_id = "11", Total_Time = 2, member_casual = "0", startingm = 80, days = "Sun", endingm = 100)
+predict(Bike_Type_Logit, newdata=glm1)
 
 ```
 
