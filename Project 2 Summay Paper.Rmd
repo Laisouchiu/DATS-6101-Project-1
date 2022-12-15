@@ -35,10 +35,20 @@ library(FNN)
 
 ```
 
+# Why Bike sharing system?
+While this system has many benefits, it also presents operators with a
+number of challenges, such as the best way to estimate demand. The data
+contains multiple features to explore which helped us to learn about the
+business and how to use analytics for the same.
 
+# Problem statement
+How can the CoGo bike-sharing company boost their profit margins by
+implementing particular adjustments, such as increasing or removing
+specific bike kinds, growing its business in a specific location, or
+lowering or raising the cost of bike share?
 
-#Source of Dataset and observation
-We are using 6 months of data covering Quarter 2 and Quarter 3 (6 months) [Not covering the entire year due to the large size of the data]. Below is the dataset structure
+# Source of Dataset and observation
+We found the data on CoGo website. They have made the CoGo's trip data available for public use. The dataset is real-time data with `r length(bike)` columns and `r nrow(bike)` rows covering 6 months of data (Quarter 2 and Quarter 3) [Not covering the entire year due to the large size of the data].
 ```{r, results='markup'}
 
 #binding all the files in this path together
@@ -51,7 +61,7 @@ bike <-map_df(file.list, function(x) read.csv(x))
 str(bike)
 
 ```
-#Features in the dataset
+# Features in the dataset
 Below are all the column names of the dataset
 ```{r, results='markup'}
 
@@ -59,31 +69,63 @@ colnames(bike)
 
 ```
 
+# SMART question and how did they come up?
+For Part-1 (Exploratory data analysis)
+How can the CoGo bike-sharing company boost their profit margins by
+implementing particular adjustments, such as increasing or removing
+specific bike kinds, growing its business in a specific location, or
+lowering or raising the cost of bike share?
 
+For Part-2 (Model Building Techniques)
+1. How much time will the customer (Annual membership or Casual) ride the bike if travelling from a certain station to another or using a certain bike etc? 
+2. Which Bike type (Electric or Manual) will the customer (Annual membership or Casual) use if travelling from a certain station to another/while using a certain bike type or during certain time-interval etc? 
+3. What type of customer (Annual membership or Casual) will travel from a certain station to another, while using a certain bike type, or traveling from a certain station etc? 
+
+We mainly want to predict Customer Type, Bike Type and Ride time using multiple features available in the data. COGO company can use these prediction models to understand their customer behavior and can tweak their business model from the information to gain more profit.
+
+We found a lot of analytics being performed on the bike sharing data on internet, but in all the analysis focus was just on the data. We also wanted to include the business perspective and wanted to see how this can finally help the company and hence we thought of the above-mentioned SMART questions.
 
 # Data Pre-Processing: 
-## Removing docked bike
-Data contains 3 types of bikes- Classic, Electric and Docked. We are removing docked bike from the data to balance the data as the data contains only 8 docked bikes over 39000+ observations, which will be unhelpful for our analysis.
+## Balancing the data
+Data contains 3 types of bikes- Classic, Electric and Docked. We are removing docked bike from the data to balance the data as the data contains only 8 docked bikes over 39000+ observations.
 ```{r, results='markup'}
-
+#summary
 bike%>%group_by(rideable_type)%>%
   summarise(count = n())
 
-#Remove docked bikes
+#Plot
+bike %>% count(rideable_type)
+ggplot(bike, aes(rideable_type, fill = rideable_type))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "User bike types", x= "bike types")+
+  theme_classic()
+
+#Remove docked bikes and summary
 bike <-subset(bike, rideable_type != "docked_bike")
 bike%>%group_by(rideable_type)%>%
-  summarise(count = n())
+summarise(count = n())
+
+#Plot
+bike %>% count(rideable_type)
+ggplot(bike, aes(rideable_type, fill = rideable_type))+
+  geom_bar()+
+  scale_fill_brewer(palette = "BuPu")+
+  guides(fill="none")+
+  labs(title = "User bike types", x= "bike types")+
+  theme_classic()
+
 ```
-## Preparing columns for modeling
-Firstly, we transfer some character variables into factor
+
+## Data type conversion
+Firstly, we converted categorical variables into factor and features containing time information into date-time format.
 ```{r, results='markup'}
 bike$rideable_type <- factor(ifelse(bike$rideable_type=="classic_bike",0,1))
 bike$start_station_id <- factor(bike$start_station_id)
 bike$end_station_id <- factor(bike$end_station_id)
 bike$member_casual<-factor(ifelse(bike$member_casual=='casual',0,1))
-```
-Transfer time character into appropriate date-time variable. 
-```{r, results='markup'}
+
 bike$start_time <- format(as.POSIXct(bike$started_at), format = "%H:%M")
 bike$end_time <- format(as.POSIXct(bike$ended_at), format = "%H:%M") 
 
@@ -92,8 +134,16 @@ res <- hm(bike$start_time)# format to 'hours:minutes'
 bike$startingm <- hour(res)*60 + minute(res)
 res <- hm(bike$end_time)# format to 'hours:minutes'
 bike$endingm <- hour(res)*60 + minute(res)
+
+str(bike)
+
 ```
-We are making a new column call 'Total_Time' by calculating the difference between started and ended time, which represents the total riding time for each customers. 
+
+## Adding new features
+We created three new columns:
+1. 'Total_Time' by calculating the difference between started and ended time, which represents the total riding time for each customers
+2. 'days' by extracting the day from the date, which has 7 categories from Monday to Sunday
+3. 'Time range' the variable for starting time is describing the specific time, which is time series. Thus, we can't just convert this variable into factor type, or it will have thousands of categories, which will be useless for our analysis and may cause over fitting easily. However, we can divide/categorize these specific time into 4 time intervals, which are Before_Dawn (00:00-06:00), Morning (06:00-13:00), Afternoon (13:00-18:00), and Night (18:00-00:00). 
 ```{r, results='markup'}
 # Fixing the date format to get the time difference
 bike$Startedat = as.POSIXct(bike$started_at, format = "%Y-%m-%d %H:%M:%S")
@@ -101,15 +151,13 @@ bike$enddat = as.POSIXct(bike$ended_at, format = "%Y-%m-%d %H:%M:%S")
 
 #Calculating the time difference 
 bike$Total_Time <- abs(as.numeric(difftime(bike$enddat, bike$Startedat, units = "mins")))
-```
-We make another new column named 'days' by extracting the day from the date, which has 7 categories from Monday to Sunday. 
-```{r, results='markup'}
+
+#days
 bike$start_date <- as.Date(bike$started_at)
 bike$end_date <- as.Date(bike$ended_at)
 bike$days <- factor(format(bike$start_date, format = "%a"))
-```
-The variable for starting time is describing the specific time, which is time series. Thus, we can't just convert this variable into factor type, or it will have thousands of categories, which will be useless for our analysis and may cause overfitting easily. However, we can divide/categorize these specific time into 4 time intervals, which are Before_Dawn (00:00-06:00), Morning (06:00-13:00), Afternoon (13:00-18:00), and finally Night (18:00-00:00). 
-```{r, results='markup'}
+
+#Time-range
 # Extract the 'Hours' only first, then change it to numeric variable
 bike$start_hour <- format(as.POSIXct(bike$started_at), format = "%H")
 bike$start_hour <- as.numeric(bike$start_hour)
@@ -121,28 +169,38 @@ bike$Time_range <- cut(bike$start_hour, c(0, 6, 12, 18, 23), c("Before dawn", "M
 #6am-12pm : Morning (Factor 2)
 #12pm-18pm : Afternoon (Factor 3)
 #6pm-0am : Night (Factor 4)
-```
-Double check the structure to make sure the current dataset structure is what we want for
-```{r, results='markup'}
+
 str(bike)
+
 ```
-## Selecting the features needed for the model and removing NA values from the data and also, remmoving outliers from Total_Time
+
+## Feature selection
+Selecting the features needed for the model
 ```{r, results='markup'}
+
 #selecting the features needed for the model
 selected_features <- c('member_casual','rideable_type', 'Total_Time', 'start_station_id', 'end_station_id', 'startingm','endingm','days', 'start_hour', 'Time_range')
 
 bike2 <- bike[,(names(bike) %in% selected_features)]
 
-#Removing NA values
-bike2<-na.omit(bike2)
 str(bike2)
 
+```
+ 
+## Removing Null values and outliers
+ 
+Removing outliers from column 'Total_Time'
+```{r, results='markup'}
+
+#Removing NA values
+bike2<-na.omit(bike2)
 
 #Removing outliers from Total_Time
-bike2 <- outlierKD2(bike2,Total_Time)
+bike2 <- outlierKD2(bike2, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+print('Summary Statistic for Total time')
+summary(bike2)
 
 ```
-
 
 
 # SMART Questions 1. How much time will the customer (Annual membership or Casual) ride the bike if travelling from a certain station to another or using a certain bike etc? 
