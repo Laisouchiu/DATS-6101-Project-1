@@ -1,6 +1,6 @@
 ---
 title: "Model Building Techniques- CoGo Bike Share Data"
-author: "Team - 03"
+author: "Team - 03 (VISHESH BHATI, AMJAD ALTUWAYJIRI, SUZHE LI)"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -148,26 +148,13 @@ contains only 8 docked bikes over 39000+ observations.
 
 ```{r, results='markup'}
 
-#Plot
-bike %>% count(rideable_type)
-ggplot(bike, aes(rideable_type, fill = rideable_type))+
-  geom_bar()+
-  scale_fill_brewer(palette = "BuPu")+
-  guides(fill="none")+
-  labs(title = "User bike types", x= "bike types")+
-  theme_classic()
+bike%>%group_by(rideable_type)%>%
+  summarise(count = n())
 
-#Remove docked bikes and summary
+#Remove docked bikes
 bike <-subset(bike, rideable_type != "docked_bike")
-
-#Plot
-bike %>% count(rideable_type)
-ggplot(bike, aes(rideable_type, fill = rideable_type))+
-  geom_bar()+
-  scale_fill_brewer(palette = "BuPu")+
-  guides(fill="none")+
-  labs(title = "User bike types", x= "bike types")+
-  theme_classic()
+bike%>%group_by(rideable_type)%>%
+  summarise(count = n())
 
 ```
 
@@ -272,7 +259,7 @@ Removing outliers from column 'Total_Time'
 bike2<-na.omit(bike2)
 
 #Removing outliers from Total_Time
-bike2 <- outlierKD2(bike2, Total_Time, rm=T, boxplt = TRUE, qqplt = TRUE)
+bike2 <- outlierKD2(bike2, Total_Time, boxplt = TRUE, qqplt = TRUE)
 print('Summary Statistic for Total time')
 summary(bike2)
 
@@ -457,8 +444,13 @@ regression model.
 
 Which Bike type (Electric or Manual) will the customer (Annual
 membership or Casual) use if travelling from a certain station to
-another/while using a certain bike type or at certain time etc? We used
-2 model to answer this question 1. Logistic Regression 2. KNN
+another, while using a certain bike type or at certain time etc?
+
+We used 2 model to answer this question:
+
+1.  Logistic Regression
+
+2.  KNN
 
 ## Model-1: Logistic Regression (for Bike Type)
 
@@ -499,8 +491,8 @@ ggplot(bike_RT_LR, aes(rideable_type, fill = rideable_type))+
 
 ```
 
-We splitted the data for training and testing the model in 75% and 25%
-split respectively.
+We splitted the data for training and testing in 75% and 25% split
+respectively.
 
 ```{r, results='markup'}
 
@@ -528,35 +520,44 @@ end_station_id, Total_Time, member_casual, startingm, endingm and days
 ```{r, results='hide'}
 # Logistic model
 Bike_Type_Logit <- glm(bike_RT_LR_train_Y ~ start_station_id+ end_station_id+Total_Time*member_casual+ startingm*days +endingm , data = bike_RT_LR_train_X, family = "binomial")
-summary(head(Bike_Type_Logit))
+
+print(summary(Bike_Type_Logit))
 
 ```
 
 ## Model Evaluation
 
-After running the models, We evaluate the model to check the following:
+After running the models, we evaluated the model based on the following:
 
 1.  Deviance test
 2.  AUC
-3.  Acuuracy at different cut-offs
-4.  Precision and Recall at the cut-offs
+3.  Accuracy, Precision and Recall at different cut-offs
 
-The Null deviance: 31728 with df = 23813. Residual deviance: 24881 on
-23611 degrees of freedom has a p-value of \_\_\_\_\_\_
+```{=html}
+<!-- -->
+```
+1.  **Deviance test**
+
+    Null deviance: 32372 on 23911 degrees of freedom
+
+    Residual deviance: 30525 on 23716 degrees of freedom
 
 ```{r}
 
-pchisq(31743-23805, 24881-23611, lower.tail=F)
+pchisq(30048-22143, 28324-21948, lower.tail=F)
 ```
 
-p-value \< 0.05, reject null model in favor of the fitted model. p-value
-\> 0.05, accept null model By using Chi-Square to calculate p-value of
-the model, the p-value is much less than .05. Therefore, we would
-conclude that the model is highly useful for predicting the probability
-that a given individual defaults.
+For the Chi-square test, P-value is much less than 0.05. Therefore, we
+would conclude that the model is highly useful for predicting the
+probability that a given individual defaults.
 
-We checked AUC of the model and we got the following: Area under the
-curve for Training: 0.8081 Area under the curve for Testing:0.8019
+2.  **AUC**
+
+    We further checked AUC of the model and got the following:
+
+    Area under the curve for Training: 0.6576
+
+    Area under the curve for Testing: 0.643
 
 Results (Graph) for Training
 
@@ -581,8 +582,9 @@ plot(b)
 
 ```
 
-Then we checked the the accuracy at different cut offs. 0.5 and 0.4 gave
-us the most accurate results
+3.  **Accuracy, Precision and Recall at different cut-offs**
+
+    We got the most accurate results at 0.5 and 0.4 cut offs.
 
 ### Results at 0.5 cut-off
 
@@ -596,7 +598,7 @@ t <- as.data.frame(crossTable)
 print(crossTable)
 ```
 
-Below is the plot of confution metrix at 0.5 cut
+Below is the plot of confusion matrix at 0.5 cut off
 
 ```{r, results='markup'}
 
@@ -612,7 +614,13 @@ ggplot(data =  t, mapping = aes(x = defult, y = bike_RT_LR_test_Y)) +
 
 ```
 
-For 0.5 cut-off, We got accuracy as 74.31
+For **0.5 cut-off**, We got:
+
+-   ***Accuracy*** as 62.02%
+
+-   ***Precision*** as 0.5634
+
+-   ***Recall*** as 0.3206
 
 ```{r, results='markup'}
 
@@ -631,7 +639,7 @@ d <- as.data.frame(crossTable4)
 print(crossTable4)
 ```
 
-Below is the plot of confution metrix at 0.4 cut-off
+Below is the plot of confusion matrix at 0.4 cut-off
 
 ```{r, results='markup'}
 
@@ -647,7 +655,13 @@ ggplot(data = d , mapping = aes(x = defult2, y = bike_RT_LR_test_Y)) +
 
 ```
 
-For 0.4 cut-off, We got accuracy as 74.31
+For **0.5 cut-off**, We got:
+
+-   ***Accuracy*** as 60.22%
+
+-   ***Precision*** as 0.5116
+
+-   ***Recall*** as 0.6285
 
 ```{r, results='markup'}
 
@@ -655,7 +669,13 @@ format(100*(crossTable4[1,1]+crossTable4[2,2])/sum(crossTable4), digits=4)
 
 ```
 
-Predicting with values
+**Predicting with values**
+
+We predicted if the start_station_id= "15", end_station_id = "11",
+Total_Time = 2, member_casual = "0", startingm = 80, days = "Sun",
+endingm = 100.
+
+We got the following result:
 
 ```{r, results='markup'}
 
@@ -751,7 +771,7 @@ knn_crosst
 
 ```
 
-KNN confusion matrix
+KNN confusion matrix and accuracy at K=3
 
 ```{r, results='markup'}
 
@@ -814,10 +834,26 @@ print(ResultDf)
 
 ## Conclusion (smart Q-2)
 
-We got an accuracy of 61.67 at 0.05 cut-off, we can say - Logistic
+**For Model-1 Logistic Regression:**
+
+We got an accuracy of 62.74% at 0.05 cut-off, we can say - Logistic
 Regression Model is an acceptable fit as it is giving us a descent
 result, but we further want to test another model to check if can get a
 better fit.
+
+**For Model-2 KNN:**
+
+We got the best accuracy as 60.04%, Precision = 0.6487882, Recall =
+0.7047907 and F1 = 0.6756309 at K=5, We didn't choose K=3 although it
+had a slightly better accuracy because the data was getting over fit at
+K=3. For KNN also we can say the same - that it is an acceptable fit as
+it is giving us a descent result.
+
+But we would choose ***Logistic Regression*** as our final model to give
+it to the company as accuracy for both the model is almost similar but,
+KNN is slow in real time as it have to keep track of all the training
+data and find the neighbor nodes, whereas LR can easily extract output
+from the tuned theta coefficients.
 
 # SMART Question 3.
 
@@ -863,8 +899,8 @@ ggplot(df, aes(member_casual, fill = member_casual))+
   theme_classic()
 ```
 
-We spllited the data for training and testing the model in 75% and 25%
-split respectively.
+We divided the data for training and testing in 75% and 25% split
+respectively.
 
 ```{r}
 
@@ -890,7 +926,8 @@ end_station_id, Total_Time, rideable_type, startingm, endingm and days
 ```{r}
 #deleted start_station_id and Wed coz the model says it is not much predictable 
 customerLogit <- glm(train_y ~ end_station_id+Total_Time+rideable_type+ startingm*days + endingm + start_station_id, data = train_X, family = "binomial")
-summary(head(customerLogit))
+
+summary(customerLogit)
 ```
 
 ## Model Evaluation
@@ -898,26 +935,34 @@ summary(head(customerLogit))
 After running the models, We evaluate the model to check the following:
 
 1.  Deviance test
-2.  AUC
-3.  Acuuracy at different cut-offs
-4.  Precision and Recall at the cut-offs
 
-The Null deviance: 31728 with df = 23813. Residual deviance: 24881 on
-23611 degrees of freedom has a p-value of \_\_\_\_\_\_
+2.  AUC
+
+3.  Accuracy, Precision and Recall at different cut-offs
+
+```{=html}
+<!-- -->
+```
+1.  **Deviance test**
+
+    Null deviance: 31743 on 23805 degrees of freedom
+
+    Residual deviance: 24881 on 23611 degrees of freedom
 
 ```{r}
 
 pchisq(31743-23805, 24881-23611, lower.tail=F)
 ```
 
-p-value \< 0.05, reject null model in favor of the fitted model. p-value
-\> 0.05, accept null model By using Chi-Square to calculate p-value of
-the model, the p-value is much less than .05. Therefore, we would
-conclude that the model is highly useful for predicting the probability
-that a given individual defaults.
+The Chi-Square p-value is less than 0.05. Therefore, we would conclude
+that the model is highly useful for predicting the probability that a
+given individual defaults.
 
-We checked AUC of the model and we got the following: Area under the
-curve for Training: 0.8081 Area under the curve for Testing:0.8019
+2.  **AUC**
+
+    Area under the curve for Training: 0.8081
+
+    Area under the curve for Testing: 0.8019
 
 Results (Graph) for Training
 
@@ -940,8 +985,10 @@ plot(roc)
 
 ```
 
-Then we checked the the accuracy at different cut offs. 0.5 and 0.4 gave
-us the most accurate results
+3.  **Accuracy, Precision and Recall at different cut-offs**
+
+    Then we checked the the accuracy at different cut offs. We got the
+    most accurate results at 0.5 and 0.4 cut off
 
 ### Results at 0.5 cut-off
 
@@ -956,7 +1003,7 @@ t <- as.data.frame(crossTable)
 crossTable
 ```
 
-Below is the plot of confution metrix at 0.5 cut
+Below is the plot of confusion matrix at 0.5 cut
 
 ```{r}
 ggplot(data =  t, mapping = aes(x = defult, y = test_y)) +
@@ -970,7 +1017,13 @@ ggplot(data =  t, mapping = aes(x = defult, y = test_y)) +
   ylab( "original")
 ```
 
-For 0.5 cut-off, We got accuracy as 74.31
+For **0.5 cut-off**, We got:
+
+-   ***Accuracy*** as 74.31%
+
+-   ***Precision*** as 0.6808
+
+-   ***Recall*** as 0.5973
 
 ```{r}
 format(100*(crossTable[1,1]+crossTable[2,2])/sum(crossTable), digits=4)
@@ -1003,7 +1056,13 @@ ggplot(data = d , mapping = aes(x = defult2, y = test_y)) +
 
 ```
 
-For 0.4 cut-off, We got accuracy as 74.31
+For **0.5 cut-off**, We got:
+
+-   ***Accuracy*** as 72.3%
+
+-   ***Precision*** as 0.6097
+
+-   ***Recall*** as 0.7330
 
 ```{r}
 format(100*(crossTable4[1,1]+crossTable4[2,2])/sum(crossTable4), digits=4)
@@ -1012,17 +1071,18 @@ format(100*(crossTable4[1,1]+crossTable4[2,2])/sum(crossTable4), digits=4)
 
 ## Conclusion (smart Q-3):
 
-According to the confution metrix the model can be considered as a good
-fit for predicting the `annual member` at 0.5 cut-off. To the interest
-of raising the profit of the company we are most interested in the
-`casual_customers` who has been predicted as `annual_customer`as they
-show the same behaviors of `annual_customers` therefore we argue that if
-the company target them, there is a high probability that they can be
-converted to the `annual_customer`.
+According to the confusion matrix the model can be considered as a good
+fit for predicting the `annual member` at 0.5 cut-off and is giving the
+accuracy of 74.31. To the interest of raising the profit of the company
+we are most interested in the `casual_customers` who has been predicted
+as `annual_customer`as they show the same behaviors of
+`annual_customers` therefore we argue that if the company target them,
+there is a high probability that they can be converted to the
+`annual_customer`.
 
 # Final Conclusion and Recommendation
 
-![](images/paste-0CAA3790.png)
+![](images/paste-6D40E3FD.png)
 
 # Reference
 
@@ -1031,4 +1091,3 @@ converted to the `annual_customer`.
 2.  <https://www.r-bloggers.com/>
 
 \
-
